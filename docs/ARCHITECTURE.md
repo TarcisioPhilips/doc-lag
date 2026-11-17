@@ -13,7 +13,8 @@ git range (base..head)
   → documentation extractors (references in Markdown: scripts, links, env vars)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
-  → reporters + exit code (text / JSON)
+  → reporters + exit code (text / JSON / SARIF)
+  → (optional) GitHub Action adapter: sticky comment + job summary
 ```
 
 Orchestration lives in `src/core/scan.ts`. Git access is confined to
@@ -36,7 +37,9 @@ never a command parsed from a README).
 | `src/rules/links-broken.ts` | Report links to files deleted/renamed in the diff |
 | `src/rules/env-vars-stale.ts` | Report documented env keys removed from example files |
 | `src/findings/` | IDs, sorting, summary counts |
-| `src/reporters/` | Text and JSON output, CI exit codes |
+| `src/reporters/` | Text, JSON, and SARIF output, CI exit codes |
+| `src/action/` | GitHub Action runner: inputs/outputs, sticky comment, job summary |
+| `action.yml` | Composite Action entry (build-from-source) |
 | `src/cli.ts` | Commander interface |
 
 ## Adding a later rule
@@ -76,7 +79,53 @@ id. The JSON report uses `schemaVersion: "1.0"`.
 
 Repository content is untrusted input. Markdown, comments, `AGENTS.md`, and
 `CLAUDE.md` cannot change tool behavior. File reads are limited to paths
-inside the repository tree at the given git refs.
+inside the repository tree at the given git refs. The scanner never executes
+commands found in documentation and does not open network connections during
+a scan. The GitHub Action may call the GitHub API solely to create or update
+the sticky PR comment.
+
+## GitHub Action packaging
+
+`action.yml` is a **composite action that builds from source**:
+
+1. `actions/setup-node` (Node 20)
+2. `npm ci --ignore-scripts` in `${{ github.action_path }}`
+3. `npm run build` (tsc → `dist/`)
+4. `node dist/action/main.js` against `${{ github.workspace }}`
+
+**Why composite + build-from-source (not a committed ncc/esbuild bundle):**
+
+- Avoids committing generated Action `dist/` bloat while the package is not
+  yet published to npm.
+- `package-lock.json` keeps installs reproducible for external consumers who
+  pin `TarcisioPhilips/doc-lag@<tag-or-sha>`.
+- One source tree serves CLI, library, and Action; no separate bundle drift.
+
+**Trade-off:** each Action run pays for `npm ci` + `tsc`. If that becomes a
+reliability or latency problem for consumers, switch to a bundled JS Action
+(`runs: using: node20`) with a CI check that the committed bundle matches
+`main`, without changing the scan/report contract.
+
+### Action behavior
+
+On `pull_request`, the Action resolves `base`/`head` from
+`pull_request.base.sha` / `pull_request.head.sha` (overridable via inputs).
+Callers should checkout with `fetch-depth: 0` so both SHAs exist locally.
+
+It always writes:
+
+- a versioned JSON report (`report-path` output)
+- a GitHub Job Summary (same content as the comment, without the HTML marker)
+
+When `comment: true`, it upserts a single sticky PR comment identified by
+`<!-- doc-lag-sticky -->`. If the token cannot write comments (common on fork
+PRs: 401/403/404), it logs a warning and continues — the job still gets the
+summary and does **not** fail for that reason.
+
+When `sarif: true`, it also writes SARIF 2.1.0 (`sarif-path`) for optional
+upload with `github/codeql-action/upload-sarif`.
+
+`fail-on: confirmed|none` maps to the same exit codes as the CLI.
 
 ## Design for future MCP and Jev integration
 

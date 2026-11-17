@@ -7,6 +7,7 @@ import { scan } from "./core/scan.js";
 import { ScanError } from "./errors.js";
 import { exitCodeFor } from "./reporters/exit-code.js";
 import { formatJson } from "./reporters/json.js";
+import { formatSarif } from "./reporters/sarif.js";
 import { formatText } from "./reporters/text.js";
 import type { FailOn, OutputFormat } from "./types.js";
 
@@ -30,7 +31,12 @@ export function runScanCommand(options: CliScanOptions): { output: string; exitC
     base: options.base,
     head: options.head,
   });
-  const output = options.format === "json" ? formatJson(report) : formatText(report);
+  const output =
+    options.format === "json"
+      ? formatJson(report)
+      : options.format === "sarif"
+        ? formatSarif(report)
+        : formatText(report);
   return { output, exitCode: exitCodeFor(report, options.failOn) };
 }
 
@@ -52,7 +58,7 @@ export function createProgram(): Command {
     .option("--head <ref>", "Head git ref to compare to", "HEAD")
     .addOption(
       new Option("--format <format>", "Output format")
-        .choices(["text", "json"])
+        .choices(["text", "json", "sarif"])
         .default("text"),
     )
     .addOption(

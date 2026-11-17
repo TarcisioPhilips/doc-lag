@@ -1,0 +1,99 @@
+name: doc-lag
+description: >
+  Scan a pull request git range for documentation made stale by the change,
+  with evidence-backed findings. Posts a sticky PR comment and job summary.
+author: TarcisioPhilips
+branding:
+  icon: file-text
+  color: blue
+
+inputs:
+  fail-on:
+    description: >
+      When to fail the step. `confirmed` fails if any confirmed finding exists;
+      `none` always exits 0 (advisory).
+    required: false
+    default: confirmed
+  comment:
+    description: >
+      Post or update a single sticky pull request comment. When the token cannot
+      write comments (typical for fork PRs), the action continues with the job
+      summary only and does not fail for that reason.
+    required: false
+    default: "true"
+  working-directory:
+    description: Repository subdirectory to scan (relative to github.workspace).
+    required: false
+    default: "."
+  sarif:
+    description: >
+      When true, write a SARIF 2.1.0 report (path available as the sarif-path
+      output) for optional upload with github/codeql-action/upload-sarif.
+    required: false
+    default: "false"
+  base:
+    description: >
+      Optional base git ref/sha. Defaults to pull_request.base.sha on
+      pull_request events.
+    required: false
+    default: ""
+  head:
+    description: >
+      Optional head git ref/sha. Defaults to pull_request.head.sha on
+      pull_request events.
+    required: false
+    default: ""
+
+outputs:
+  findings-count:
+    description: Total number of findings
+    value: ${{ steps.run.outputs.findings-count }}
+  confirmed-count:
+    description: Number of confirmed findings
+    value: ${{ steps.run.outputs.confirmed-count }}
+  needs-review-count:
+    description: Number of needs-review findings
+    value: ${{ steps.run.outputs.needs-review-count }}
+  report-path:
+    description: Absolute path to the JSON report written by the action
+    value: ${{ steps.run.outputs.report-path }}
+  sarif-path:
+    description: Absolute path to the SARIF report (empty when sarif input is false)
+    value: ${{ steps.run.outputs.sarif-path }}
+
+runs:
+  using: composite
+  steps:
+    # Packaging choice: composite + build-from-source (no committed action dist).
+    # Reproducible via package-lock.json; consumers pin a git tag/SHA.
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: npm
+        cache-dependency-path: ${{ github.action_path }}/package-lock.json
+
+    - name: Install doc-lag
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --ignore-scripts
+
+    - name: Build doc-lag
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm run build
+
+    - name: Run doc-lag
+      id: run
+      shell: bash
+      # Scan the consumer workspace; never execute commands found in docs.
+      # Network beyond this step is only the GitHub API for sticky comments.
+      env:
+        DOC_LAG_FAIL_ON: ${{ inputs.fail-on }}
+        DOC_LAG_COMMENT: ${{ inputs.comment }}
+        DOC_LAG_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        DOC_LAG_SARIF: ${{ inputs.sarif }}
+        DOC_LAG_BASE: ${{ inputs.base }}
+        DOC_LAG_HEAD: ${{ inputs.head }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: node "${{ github.action_path }}/dist/action/main.js"
