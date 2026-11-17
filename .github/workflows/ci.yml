@@ -46,33 +46,36 @@ jobs:
             exit 1
           fi
 
+  # Dogfood the published-style composite action on every PR (advisory).
   dogfood:
     name: Dogfood
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+      - name: Run doc-lag action
+        id: doc-lag
+        uses: ./
         with:
-          node-version: 22
-          cache: npm
+          # Advisory dogfood: never fail the required CI check on findings.
+          fail-on: none
+          comment: true
+          sarif: true
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Run doc-lag on this PR
-        continue-on-error: true
+      - name: Show action outputs
         run: |
-          node dist/cli.js scan \
-            --base "origin/${{ github.base_ref }}" \
-            --head HEAD \
-            --fail-on none \
-            --format text
+          echo "findings-count=${{ steps.doc-lag.outputs.findings-count }}"
+          echo "confirmed-count=${{ steps.doc-lag.outputs.confirmed-count }}"
+          echo "report-path=${{ steps.doc-lag.outputs.report-path }}"
+          echo "sarif-path=${{ steps.doc-lag.outputs.sarif-path }}"
+          test -n "${{ steps.doc-lag.outputs.report-path }}"
+          test -f "${{ steps.doc-lag.outputs.report-path }}"
+          test -n "${{ steps.doc-lag.outputs.sarif-path }}"
+          test -f "${{ steps.doc-lag.outputs.sarif-path }}"

@@ -10,12 +10,10 @@ references, and configuration facts, producing **evidence-backed findings**
 for developers and CI.
 
 > **Project status: early local preview.** This repository is not published to
-> npm. Three rules are implemented: `scripts.missing` (package.json scripts
-> removed or renamed in a Git range, still referenced from Markdown),
-> `links.broken` (local Markdown links and file paths pointing to files deleted
-> or renamed in the diff), and `env.stale` (environment variables removed from
-> `.env.example` files but still documented). Other planned checks (GitHub
-> Action publishing, MCP, semantic ranking) are not available yet.
+> npm. Three rules are implemented: `scripts.missing`, `links.broken`, and
+> `env.stale`. A composite GitHub Action is available from this repository
+> (build-from-source; no npm publish required). MCP and semantic ranking are
+> not available yet.
 
 ## Why?
 
@@ -78,7 +76,7 @@ repository.
 | --- | --- | --- |
 | `--base <ref>` | required | Base Git ref |
 | `--head <ref>` | `HEAD` | Head Git ref |
-| `--format <text\|json>` | `text` | Output format |
+| `--format <text\|json\|sarif>` | `text` | Output format |
 | `--fail-on <confirmed\|none>` | `confirmed` | CI threshold |
 | `--cwd <path>` | current directory | Repository to scan |
 
@@ -108,12 +106,14 @@ Implemented now:
   still documented (see [Limitations](#env-stale-limitations))
 - Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`,
   `CONTRIBUTING.md`
-- Text and versioned JSON output with CI-friendly exit codes
-- Offline-by-default, no signup, no API keys
+- Text, versioned JSON, and SARIF output with CI-friendly exit codes
+- GitHub Action (sticky PR comment + job summary; optional SARIF)
+- Offline-by-default scan (no signup, no API keys; Action may call the GitHub
+  API only to create/update the sticky comment)
 
 Planned, not implemented yet:
 
-- Published GitHub Action, SARIF output, MCP adapter, semantic ranking
+- MCP adapter, semantic ranking
 
 ### links.broken limitations
 
@@ -163,12 +163,102 @@ file, the finding includes a rename hint.
 - Require MCP, Jev, or another external model
 - Execute, install, or evaluate commands mentioned in the scanned repository
 
+## GitHub Action
+
+Use doc-lag on `pull_request` to scan `base.sha..head.sha`, write a job
+summary, and post or update a single sticky PR comment. Fork PRs without
+comment permission still get the job summary; the step does not fail for that
+reason.
+
+```yaml
+name: doc-lag
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  # Optional, only if you upload SARIF:
+  # security-events: write
+
+jobs:
+  doc-lag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: doc-lag
+        id: doc-lag
+        uses: TarcisioPhilips/doc-lag@v0   # or pin a commit SHA / @main
+        with:
+          fail-on: confirmed            # confirmed | none (default: confirmed)
+          comment: true                 # sticky PR comment (default: true)
+          working-directory: .          # optional subdirectory
+          sarif: false                  # optional SARIF file for code scanning
+
+      # Optional: surface findings in GitHub code scanning
+      # - if: steps.doc-lag.outputs.sarif-path != ''
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: ${{ steps.doc-lag.outputs.sarif-path }}
+      #     category: doc-lag
+```
+
+**Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, optional
+`base` / `head` overrides.  
+**Outputs:** `findings-count`, `confirmed-count`, `needs-review-count`,
+`report-path`, `sarif-path`.
+
+**Zero findings:** when `comment: true`, the Action still creates or updates
+the sticky PR comment (and always writes the job summary), with an explicit
+“No documentation drift findings for this range.” message. That makes it
+obvious the scan ran. Set `comment: false` to suppress the PR comment and
+rely on the job summary / outputs only. Re-runs upsert the same sticky
+comment (matched by `<!-- doc-lag-sticky -->`) instead of posting duplicates.
+
+The Action is a **composite action that installs and builds from source** in
+`${{ github.action_path }}` (locked by `package-lock.json`). That avoids
+committing a bundled `dist/` for the Action while keeping external consumers
+correct when they pin a tag or SHA. The scan itself stays read-only and does
+not execute commands found in documentation.
+
+### Example sticky comment
+
+```markdown
+<!-- doc-lag-sticky -->
+## doc-lag report
+
+Scanned `aaa111..bbb222` — **1** confirmed, **1** needs-review.
+
+### Confirmed
+
+#### `README.md:1` — `scripts.missing` (CONFIRMED)
+
+`npm run deploy:preview` is documented but no longer exists in package.json scripts.
+
+- Evidence: `package.json#scripts` (`deploy:preview`: base present, head absent)
+- Suggested fix: Update the documented command or restore the script
+
+### Needs review
+
+#### `docs/guide.md:4` — `links.broken` (NEEDS-REVIEW)
+
+`src/old.ts` may reference a deleted path.
+
+- Evidence: `src/old.ts` (deleted in this diff)
+- Suggested fix: Confirm the inline path and update docs if needed.
+```
+
 ## Roadmap
 
 1. Local read-only deterministic CLI (scripts, links, and env rules).
-2. Optional SARIF output and agent-facing MCP integration.
-3. Optional semantic ranking (evaluate Jev versus simpler approaches first).
-4. GitHub Pages only after initial developer adoption.
+2. Tested GitHub Action + optional SARIF (this repository).
+3. Agent-facing MCP integration.
+4. Optional semantic ranking (evaluate Jev versus simpler approaches first).
+5. GitHub Pages only after initial developer adoption.
 
 ## Differences from existing tools
 

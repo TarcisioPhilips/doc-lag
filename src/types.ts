@@ -4,7 +4,7 @@ export const TOOL_NAME = "doc-lag" as const;
 export type FindingStatus = "confirmed" | "needs-review" | "unknown";
 export type FindingSeverity = "warning" | "info";
 export type ChangeKind = "added" | "modified" | "deleted" | "renamed";
-export type OutputFormat = "text" | "json";
+export type OutputFormat = "text" | "json" | "sarif";
 export type FailOn = "confirmed" | "none";
 
 export interface DocumentationLocation {
