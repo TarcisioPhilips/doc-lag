@@ -11,9 +11,8 @@ for developers and CI.
 
 > **Project status: early local preview.** This repository is not published to
 > npm. Three rules are implemented: `scripts.missing`, `links.broken`, and
-> `env.stale`. A composite GitHub Action is available from this repository
-> (build-from-source; no npm publish required). MCP and semantic ranking are
-> not available yet.
+> `env.stale`. A composite GitHub Action and a read-only MCP server (stdio) are
+> available from this repository. Semantic ranking is not available yet.
 
 ## Why?
 
@@ -108,12 +107,13 @@ Implemented now:
   `CONTRIBUTING.md`
 - Text, versioned JSON, and SARIF output with CI-friendly exit codes
 - GitHub Action (sticky PR comment + job summary; optional SARIF)
+- Read-only MCP server (`doc-lag mcp`) for coding agents
 - Offline-by-default scan (no signup, no API keys; Action may call the GitHub
   API only to create/update the sticky comment)
 
 Planned, not implemented yet:
 
-- MCP adapter, semantic ranking
+- Optional semantic ranking (evaluate Jev versus simpler baselines first)
 
 ### links.broken limitations
 
@@ -162,6 +162,125 @@ file, the finding includes a rename hint.
 - Upload repo contents to AI services
 - Require MCP, Jev, or another external model
 - Execute, install, or evaluate commands mentioned in the scanned repository
+
+## MCP server (coding agents)
+
+doc-lag exposes a **read-only** MCP server over stdio so agents (Cursor, Claude
+Code, Codex, VS Code) can ask which docs a change made stale — before opening a
+PR or after editing code (including uncommitted working-tree changes).
+
+```bash
+npm run build
+node dist/cli.js mcp
+# or during development:
+npm run mcp
+```
+
+Tools (all annotated read-only; no network; paths constrained to the workspace):
+
+| Tool | Purpose |
+| --- | --- |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` to include uncommitted edits. |
+| `explain_finding` | Re-scan and return one finding by stable id with full evidence. |
+| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
+
+### Cursor
+
+Create `.cursor/mcp.json` in the project (or user MCP config):
+
+```json
+{
+  "mcpServers": {
+    "doc-lag": {
+      "command": "npx",
+      "args": ["-y", "doc-lag", "mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+Until the package is published to npm, point at this checkout instead:
+
+```json
+{
+  "mcpServers": {
+    "doc-lag": {
+      "command": "node",
+      "args": ["/absolute/path/to/doc-lag/dist/cli.js", "mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add doc-lag -- npx -y doc-lag mcp
+# local checkout:
+claude mcp add doc-lag -- node /absolute/path/to/doc-lag/dist/cli.js mcp
+```
+
+### VS Code
+
+Add to `.vscode/mcp.json` (or user MCP settings):
+
+```json
+{
+  "servers": {
+    "doc-lag": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "doc-lag", "mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+### Example tool call
+
+```json
+{
+  "name": "scan_diff",
+  "arguments": {
+    "include_working_tree": true
+  }
+}
+```
+
+Example response (shape abbreviated):
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "doc-lag scan abc1234..WORKING_TREE: 1 finding(s) (1 confirmed, 0 needs-review, 0 unknown).\n- [confirmed] scripts.missing:README.md:1:deploy:preview — `npm run deploy:preview` is documented but no longer exists in package.json scripts."
+    }
+  ],
+  "structuredContent": {
+    "schemaVersion": "1.0",
+    "tool": "doc-lag",
+    "mode": "diff",
+    "base": "abc1234…",
+    "head": "WORKING_TREE",
+    "findings": [
+      {
+        "id": "scripts.missing:README.md:1:deploy:preview",
+        "ruleId": "scripts.missing",
+        "status": "confirmed",
+        "message": "`npm run deploy:preview` is documented but no longer exists in package.json scripts.",
+        "documentation": { "path": "README.md", "line": 1 },
+        "evidence": [{ "path": "package.json", "pointer": "/scripts/deploy:preview" }],
+        "suggestion": "Update the documented command or restore the script"
+      }
+    ],
+    "summary": { "confirmed": 1, "needsReview": 0, "unknown": 0 }
+  }
+}
+```
 
 ## GitHub Action
 
@@ -256,7 +375,7 @@ Scanned `aaa111..bbb222` — **1** confirmed, **1** needs-review.
 
 1. Local read-only deterministic CLI (scripts, links, and env rules).
 2. Tested GitHub Action + optional SARIF (this repository).
-3. Agent-facing MCP integration.
+3. Agent-facing MCP integration (this repository: `doc-lag mcp`).
 4. Optional semantic ranking (evaluate Jev versus simpler approaches first).
 5. GitHub Pages only after initial developer adoption.
 

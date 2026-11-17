@@ -56,6 +56,12 @@ export interface ScanOptions {
   cwd: string;
   base: string;
   head: string;
+  /**
+   * When true, compare against an ephemeral snapshot of the current working
+   * tree (including uncommitted and untracked files) instead of `head`.
+   * The report's `head` field is then `"WORKING_TREE"`.
+   */
+  includeWorkingTree?: boolean;
 }
 
 export interface ScriptInvocation {
