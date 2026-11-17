@@ -1,6 +1,6 @@
 # Architecture
 
-RepoDocPulse is a local, read-only, deterministic pipeline. It never executes
+doc-lag is a local, read-only, deterministic pipeline. It never executes
 commands found in documentation, never installs packages from a scanned
 repository, and never modifies that repository.
 

@@ -1,12 +1,12 @@
 {
-  "name": "repodocpulse",
+  "name": "doc-lag",
   "version": "0.1.0",
   "description": "Detect documentation that may be stale after a code change, with traceable evidence.",
   "type": "module",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bin": {
-    "repodocpulse": "dist/cli.js"
+    "doc-lag": "dist/cli.js"
   },
   "exports": {
     ".": {

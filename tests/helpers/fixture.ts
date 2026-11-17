@@ -28,10 +28,10 @@ export function createFixtureRepo(options: {
   baseFiles: Record<string, string>;
   headFiles?: Record<string, string | null>;
 }): FixtureRepo {
-  const repo = mkdtempSync(path.join(tmpdir(), "repodocpulse-"));
+  const repo = mkdtempSync(path.join(tmpdir(), "doc-lag-"));
   git(repo, ["init", "-b", "main"]);
-  git(repo, ["config", "user.email", "test@repodocpulse.local"]);
-  git(repo, ["config", "user.name", "RepoDocPulse Tests"]);
+  git(repo, ["config", "user.email", "test@doc-lag.local"]);
+  git(repo, ["config", "user.name", "doc-lag Tests"]);
   git(repo, ["config", "commit.gpgsign", "false"]);
 
   writeFiles(repo, options.baseFiles);

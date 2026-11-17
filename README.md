@@ -1,11 +1,11 @@
-# RepoDocPulse
+# doc-lag
 
 > **Working name — verify availability before publishing.**
-> **License: TBD** (MIT or Apache-2.0). The package is marked `UNLICENSED` until that decision is made.
+> **License:** MIT — see [LICENSE](LICENSE).
 
 **Your code changed. Did your docs keep up?**
 
-RepoDocPulse is a local-first CLI that identifies documentation impacted by
+doc-lag is a local-first CLI that identifies documentation impacted by
 code changes. It connects a Git diff to documented commands and (later) local
 file references and configuration facts, producing **evidence-backed findings**
 for developers and CI.
@@ -18,7 +18,7 @@ for developers and CI.
 ## Why?
 
 A pull request removes a script. The README still tells people to use it.
-Traditional tests pass; onboarding breaks. RepoDocPulse shows what changed,
+Traditional tests pass; onboarding breaks. doc-lag shows what changed,
 where documentation became stale, and why.
 
 The scan is **PR-aware**: it reports references to scripts that *changed in
@@ -131,4 +131,4 @@ issues, and a license.
 
 ## License
 
-TBD (MIT or Apache-2.0).
+MIT — see [LICENSE](LICENSE).

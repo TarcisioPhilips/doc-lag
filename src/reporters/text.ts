@@ -44,7 +44,7 @@ function findingBlock(reportLine: string, rest: string[]): string {
 export function formatText(report: ScanReport): string {
   const count = report.findings.length;
   const noun = count === 1 ? "finding" : "findings";
-  const header = `RepoDocPulse  ${count} ${noun}  (${report.base}..${report.head})`;
+  const header = `doc-lag  ${count} ${noun}  (${report.base}..${report.head})`;
   if (count === 0) {
     return `${header}\n`;
   }

@@ -1,5 +1,5 @@
 export const SCHEMA_VERSION = "1.0" as const;
-export const TOOL_NAME = "repodocpulse" as const;
+export const TOOL_NAME = "doc-lag" as const;
 
 export type FindingStatus = "confirmed" | "needs-review" | "unknown";
 export type FindingSeverity = "warning" | "info";

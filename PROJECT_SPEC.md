@@ -1,4 +1,4 @@
-     1|# RepoDocPulse — Product & Engineering Specification
+     1|# doc-lag — Product & Engineering Specification
      2|
      3|> **Status:** proposal / pre-release · **Version:** 0.1-draft · **Date:** 2026-11-17  
      4|> **Language of this specification:** Portuguese (Brazil) · **Public repository copy:** English  
@@ -6,7 +6,7 @@
      6|
      7|## 0. Executive decision
      8|
-     9|**Working name:** **RepoDocPulse** (`repodocpulse` / `repo-doc-pulse`). **Not yet confirmed as available** on GitHub, npm/PyPI, domains or in trademark databases. Do not publish under this name until the naming gate is completed.
+     9|**Working name:** **doc-lag** (`doc-lag` / `doc-lag`). **Not yet confirmed as available** on GitHub, npm/PyPI, domains or in trademark databases. Do not publish under this name until the naming gate is completed.
     10|
     11|**Product one-liner:** Detect documentation that may be stale after a code change — with traceable evidence, not guesswork.
     12|
@@ -44,13 +44,13 @@
     44|
     45|- **DocDrift** was our earlier codename, but overlapping projects and adjacent names make search and branding harder.
     46|- Other trial names such as **DocTether**, **DocParity** and **ReadmeProof** were found in use during exploratory searches; avoid assuming uniqueness.
-    47|- **RepoDocPulse** is a *working candidate*, not a reserved handle or trademark clearance. A quick indexed-web search did not establish a direct exact-name match, **but this is not proof of availability**.
+    47|- **doc-lag** is a *working candidate*, not a reserved handle or trademark clearance. A quick indexed-web search did not establish a direct exact-name match, **but this is not proof of availability**.
     48|- **Naming gate before first public release:** search GitHub repositories/users/orgs; npm and PyPI exact package names; domain and common social handles if desired; trademark search for relevant jurisdictions; check pronunciation and confusion with similarly named tools. If unavailable, select a new distinctive name **without changing the keywords in the positioning**.
     49|- Do not promise SEO ranking. GitHub search can use name, description, topics and README; write accurate, natural language and avoid keyword stuffing.
     50|
     51|### Draft GitHub repository metadata (English)
     52|
-    53|**Repository name:** `repodocpulse` (pending availability)
+    53|**Repository name:** `doc-lag` (pending availability)
     54|
     55|**About / short description:**
     56|
@@ -71,7 +71,7 @@
     71|
     72|### Competitive landscape (verify again before release)
     73|
-    74|| Comparable project | Known scope | Positioning test for RepoDocPulse |
+    74|| Comparable project | Known scope | Positioning test for doc-lag |
     75||---|---|---|
     76|| `Dvorinka/docsync` | Verifies env vars, paths, commands, API routes and build pins | Must demonstrate PR-aware, evidence-linked prioritization beyond generic scan |
     77|| `NickitaChe/docs-drift` | Checks commands, flags, env vars/config and CI workflows | Must outperform on *change-to-doc traceability*, not duplicate check coverage |
@@ -96,7 +96,7 @@
     96|
     97|```bash
     98|# illustrative command design — not implemented
-    99|npx repodocpulse scan --base origin/main --head HEAD --format text
+    99|npx doc-lag scan --base origin/main --head HEAD --format text
    100|```
    101|
    102|1. Read changed files and changed line ranges from Git.
@@ -109,7 +109,7 @@
    109|### Workflow B — repository-wide baseline
    110|
    111|```bash
-   112|npx repodocpulse scan --all --format json
+   112|npx doc-lag scan --all --format json
    113|```
    114|
    115|Runs bounded deterministic checks on supported facts, even without a diff. Useful for onboarding, but **less distinctive** than the PR workflow.
@@ -182,7 +182,7 @@
    182|```json
    183|{
    184|  "schemaVersion": "1.0",
-   185|  "tool": "repodocpulse",
+   185|  "tool": "doc-lag",
    186|  "mode": "diff",
    187|  "base": "origin/main",
    188|  "head": "HEAD",
@@ -325,7 +325,7 @@
    325|
    326|## 12. Open decisions before implementation
    327|
-   328|1. Final public name (RepoDocPulse is a working name; reserve exact package and handle).
+   328|1. Final public name (doc-lag is a working name; reserve exact package and handle).
    329|2. Start TypeScript-only manifests, or include Python `.env.example` and Markdown immediately? **Recommendation:** start TS manifests plus universal path/link rules; add Python-specific extractors later.
    330|3. Git diff semantics: include uncommitted working-tree changes? **Recommendation:** explicit `--working-tree` in P1, avoid ambiguous default.
    331|4. How strict should `--fail-on` be by default? **Recommendation:** only confirmed findings block CI; advisory suggestions never block by default.
@@ -334,7 +334,7 @@
    334|
    335|## 13. Cursor kickoff prompt (paste into your coding agent)
    336|
-   337|> Implement RepoDocPulse from `PROJECT_SPEC.md`. Start with **Gate 0**: inspect listed competitors and identify a concrete differentiating fixture; do not code before writing the competitive gap in `docs/validation.md`. Then implement **only RF-01 through RF-03, RF-04, RF-07 through RF-12** for a TypeScript CLI, with fixtures and tests. Keep the tool fully local and read-only; never execute commands found in repository docs. Use a clear, versioned JSON report; return deterministic results and documented exit codes. Do **not** implement Jev, MCP, cloud service, GitHub Pages, UI or automatic file modifications. Document every limitation, provide exact commands to run tests and a demonstrable before/after PR fixture. Avoid making unsupported marketing claims.
+   337|> Implement doc-lag from `PROJECT_SPEC.md`. Start with **Gate 0**: inspect listed competitors and identify a concrete differentiating fixture; do not code before writing the competitive gap in `docs/validation.md`. Then implement **only RF-01 through RF-03, RF-04, RF-07 through RF-12** for a TypeScript CLI, with fixtures and tests. Keep the tool fully local and read-only; never execute commands found in repository docs. Use a clear, versioned JSON report; return deterministic results and documented exit codes. Do **not** implement Jev, MCP, cloud service, GitHub Pages, UI or automatic file modifications. Document every limitation, provide exact commands to run tests and a demonstrable before/after PR fixture. Avoid making unsupported marketing claims.
    338|
    339|---
    340|

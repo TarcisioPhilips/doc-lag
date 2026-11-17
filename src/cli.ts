@@ -39,7 +39,7 @@ export function createProgram(): Command {
   // Apply before subcommands are added so they inherit the callback.
   program.exitOverride();
   program
-    .name("repodocpulse")
+    .name("doc-lag")
     .description(
       "Detect documentation that may be stale after a code change. Local, read-only, and deterministic. Never executes commands found in docs.",
     )
@@ -70,8 +70,8 @@ Exit codes:
   2  usage, configuration, or execution error
 
 Examples:
-  repodocpulse scan --base main --head HEAD
-  repodocpulse scan --base origin/main --head HEAD --format json --fail-on confirmed
+  doc-lag scan --base main --head HEAD
+  doc-lag scan --base origin/main --head HEAD --format json --fail-on confirmed
 `,
     )
     .action((opts: { base: string; head: string; format: OutputFormat; failOn: FailOn; cwd?: string }) => {
