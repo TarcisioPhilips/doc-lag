@@ -10,10 +10,10 @@ function formatEvidence(item: EvidenceItem): string[] {
   }
 
   const lines = [`Evidence: ${item.path}${pointerToHash(item.pointer)}`];
-  const scriptName = scriptNameFromPointer(item.pointer);
-  if (scriptName) {
-    lines.push(`  base: ${describePresence(scriptName, item.base)}`);
-    lines.push(`  head: ${describePresence(scriptName, item.head)}`);
+  const factName = factNameFromPointer(item.pointer);
+  if (factName) {
+    lines.push(`  base: ${describePresence(factName, item.base)}`);
+    lines.push(`  head: ${describePresence(factName, item.head)}`);
   }
   return lines;
 }
@@ -22,25 +22,28 @@ function pointerToHash(pointer: string): string {
   if (pointer === "/scripts" || pointer.startsWith("/scripts/")) {
     return "#scripts";
   }
+  if (pointer.startsWith("/env/")) {
+    return "#env";
+  }
   return pointer;
 }
 
-function scriptNameFromPointer(pointer: string): string | null {
-  if (!pointer.startsWith("/scripts/")) {
-    return null;
+function factNameFromPointer(pointer: string): string | null {
+  if (pointer.startsWith("/scripts/")) {
+    return pointer
+      .slice("/scripts/".length)
+      .replaceAll("~1", "/")
+      .replaceAll("~0", "~");
   }
-  return pointer
-    .slice("/scripts/".length)
-    .replaceAll("~1", "/")
-    .replaceAll("~0", "~");
+  if (pointer.startsWith("/env/")) {
+    return pointer.slice("/env/".length);
+  }
+  return null;
 }
 
 function describePresence(name: string, value: unknown): string {
   if (value === undefined || value === null) {
     return `"${name}" is absent`;
-  }
-  if (typeof value === "string") {
-    return `"${name}" was present`;
   }
   return `"${name}" was present`;
 }

@@ -8,9 +8,9 @@ repository, and never modifies that repository.
 
 ```
 git range (base..head)
-  → source extractors     (facts from changed manifests, path changes)
+  → source extractors     (facts from changed manifests, env examples, path changes)
   → documentation discovery
-  → documentation extractors (references in Markdown: scripts, links)
+  → documentation extractors (references in Markdown: scripts, links, env vars)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
   → reporters + exit code (text / JSON)
@@ -30,13 +30,16 @@ never a command parsed from a README).
 | `src/extractors/markdown-scripts.ts` | Extract script invocations from Markdown |
 | `src/extractors/markdown-links.ts` | Extract local links and inline code paths from Markdown |
 | `src/extractors/path-changes.ts` | Extract deleted/renamed files from git diff |
+| `src/extractors/env-example.ts` | Extract env key changes from committed `.env.example`-like files |
+| `src/extractors/markdown-env.ts` | Extract env var references from Markdown |
 | `src/rules/scripts-missing.ts` | Report documented scripts missing from package.json |
 | `src/rules/links-broken.ts` | Report links to files deleted/renamed in the diff |
+| `src/rules/env-vars-stale.ts` | Report documented env keys removed from example files |
 | `src/findings/` | IDs, sorting, summary counts |
 | `src/reporters/` | Text and JSON output, CI exit codes |
 | `src/cli.ts` | Commander interface |
 
-## Adding a later rule (env vars, etc.)
+## Adding a later rule
 
 New rule families should follow the same contract so they slot in without
 changing the CLI or report schema:
@@ -59,10 +62,9 @@ Current rules:
   documentation still invokes
 - `links.broken` (RF-05): local Markdown links and file paths pointing to
   files deleted or renamed in the diff
-
-Planned, not implemented:
-
-- `.env.example` / declared config keys (RF-06)
+- `env.stale` (RF-06): env keys removed or renamed in committed example files
+  (`.env.example`, `.env.sample`, `.env.template`, …) that documentation still
+  references. Never reads real `.env` files; only example files via git.
 
 ## Finding identity and output
 
