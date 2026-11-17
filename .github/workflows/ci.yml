@@ -62,17 +62,20 @@ jobs:
 
       - name: Run doc-lag action
         id: doc-lag
-        continue-on-error: true
         uses: ./
         with:
+          # Advisory dogfood: never fail the required CI check on findings.
           fail-on: none
           comment: true
           sarif: true
 
       - name: Show action outputs
-        if: always()
         run: |
           echo "findings-count=${{ steps.doc-lag.outputs.findings-count }}"
           echo "confirmed-count=${{ steps.doc-lag.outputs.confirmed-count }}"
           echo "report-path=${{ steps.doc-lag.outputs.report-path }}"
           echo "sarif-path=${{ steps.doc-lag.outputs.sarif-path }}"
+          test -n "${{ steps.doc-lag.outputs.report-path }}"
+          test -f "${{ steps.doc-lag.outputs.report-path }}"
+          test -n "${{ steps.doc-lag.outputs.sarif-path }}"
+          test -f "${{ steps.doc-lag.outputs.sarif-path }}"

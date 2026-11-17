@@ -66,12 +66,13 @@ runs:
   steps:
     # Packaging choice: composite + build-from-source (no committed action dist).
     # Reproducible via package-lock.json; consumers pin a git tag/SHA.
+    # No npm cache here: with `uses: ./`, github.action_path can contain a
+    # trailing "/./" and setup-node rejects cache-dependency-path with ".".
+    # The lockfile is small; a cold npm ci is acceptable for correctness.
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: "20"
-        cache: npm
-        cache-dependency-path: ${{ github.action_path }}/package-lock.json
 
     - name: Install doc-lag
       shell: bash

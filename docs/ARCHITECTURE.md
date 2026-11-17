@@ -88,7 +88,9 @@ the sticky PR comment.
 
 `action.yml` is a **composite action that builds from source**:
 
-1. `actions/setup-node` (Node 20)
+1. `actions/setup-node` (Node 20; no npm cache — `uses: ./` can make
+   `github.action_path` contain `/./`, which `setup-node` rejects in
+   `cache-dependency-path`)
 2. `npm ci --ignore-scripts` in `${{ github.action_path }}`
 3. `npm run build` (tsc → `dist/`)
 4. `node dist/action/main.js` against `${{ github.workspace }}`
