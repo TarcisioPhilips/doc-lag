@@ -80,3 +80,20 @@ export interface ScriptChange {
   removed: string[];
   added: string[];
 }
+
+export type LinkKind = "markdown" | "image" | "inline-code";
+
+export interface LocalLinkReference {
+  docPath: string;
+  line: number;
+  targetPath: string;
+  rawLink: string;
+  kind: LinkKind;
+  anchor?: string;
+}
+
+export interface PathChange {
+  oldPath: string;
+  newPath?: string;
+  status: "deleted" | "renamed";
+}
