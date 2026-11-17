@@ -1,6 +1,14 @@
 import type { EvidenceItem, ScanReport } from "../types.js";
 
 function formatEvidence(item: EvidenceItem): string[] {
+  if (item.pointer === "deleted") {
+    return [`Evidence: ${item.path}`, `  deleted in this diff`];
+  }
+  if (item.pointer.startsWith("renamed → ")) {
+    const newPath = item.pointer.slice("renamed → ".length);
+    return [`Evidence: ${item.path}`, `  renamed → ${newPath}`];
+  }
+
   const lines = [`Evidence: ${item.path}${pointerToHash(item.pointer)}`];
   const scriptName = scriptNameFromPointer(item.pointer);
   if (scriptName) {

@@ -8,9 +8,9 @@ repository, and never modifies that repository.
 
 ```
 git range (base..head)
-  → source extractors     (facts from changed manifests)
+  → source extractors     (facts from changed manifests, path changes)
   → documentation discovery
-  → documentation extractors (references in Markdown)
+  → documentation extractors (references in Markdown: scripts, links)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
   → reporters + exit code (text / JSON)
@@ -26,13 +26,17 @@ never a command parsed from a README).
 | --- | --- |
 | `src/core/git.ts` | Resolve refs, list trees, read files at a revision, diff paths |
 | `src/core/docs.ts` | Decide which Markdown files are in scope |
-| `src/extractors/` | Turn repository files into structured facts or doc references |
-| `src/rules/` | Pure checks that emit findings from those structures |
+| `src/extractors/package-scripts.ts` | Extract script changes from package.json at base/head |
+| `src/extractors/markdown-scripts.ts` | Extract script invocations from Markdown |
+| `src/extractors/markdown-links.ts` | Extract local links and inline code paths from Markdown |
+| `src/extractors/path-changes.ts` | Extract deleted/renamed files from git diff |
+| `src/rules/scripts-missing.ts` | Report documented scripts missing from package.json |
+| `src/rules/links-broken.ts` | Report links to files deleted/renamed in the diff |
 | `src/findings/` | IDs, sorting, summary counts |
 | `src/reporters/` | Text and JSON output, CI exit codes |
 | `src/cli.ts` | Commander interface |
 
-## Adding a later rule (links/paths, env vars)
+## Adding a later rule (env vars, etc.)
 
 New rule families should follow the same contract so they slot in without
 changing the CLI or report schema:
@@ -49,12 +53,15 @@ changing the CLI or report schema:
 4. Register the rule in `src/core/scan.ts`.
 5. Cover it with a temp-dir git fixture in `tests/`.
 
-Current rule: `scripts.missing` (removed or renamed `package.json` scripts
-that documentation still invokes).
+Current rules:
+
+- `scripts.missing` (RF-04): removed or renamed `package.json` scripts that
+  documentation still invokes
+- `links.broken` (RF-05): local Markdown links and file paths pointing to
+  files deleted or renamed in the diff
 
 Planned, not implemented:
 
-- Local links and file paths (RF-05)
 - `.env.example` / declared config keys (RF-06)
 
 ## Finding identity and output
@@ -68,3 +75,35 @@ id. The JSON report uses `schemaVersion: "1.0"`.
 Repository content is untrusted input. Markdown, comments, `AGENTS.md`, and
 `CLAUDE.md` cannot change tool behavior. File reads are limited to paths
 inside the repository tree at the given git refs.
+
+## Design for future MCP and Jev integration
+
+The finding structure is designed for future consumption by an MCP server
+(read-only `scan_diff`, `get_finding`, `explain_impact` tools) and an optional
+Jev semantic-ranking layer, without breaking changes:
+
+- **Stable IDs**: Finding IDs are content-derived (`ruleId:docPath:line:name`),
+  not sequential. This allows MCP clients to reference specific findings across
+  sessions and Jev to correlate findings with ranking signals.
+
+- **Evidence array**: Each finding includes an `evidence` array with structured
+  provenance (source path, JSON pointer or status, base/head values). This
+  provides enough context for a ranking model to assess relevance without
+  re-parsing the repository.
+
+- **Status granularity**: Findings have a `status` field (`confirmed`,
+  `needs-review`, `unknown`) that separates deterministic checks from heuristic
+  matches. Jev may re-rank `needs-review` findings but cannot upgrade
+  `needs-review` to `confirmed`—only deterministic rules can do that.
+
+- **Versioned JSON schema**: The report includes `schemaVersion: "1.0"`. Future
+  additions (e.g., confidence scores, ranking metadata) will be additive fields
+  or a minor version bump, preserving backward compatibility.
+
+- **Deterministic output**: Same inputs produce identical JSON (sorted findings,
+  stable IDs). This is essential for CI gating and for Jev evaluation baselines.
+
+The MCP adapter (P1) will expose the scan pipeline as read-only tools. The Jev
+integration (P2) will optionally re-rank `needs-review` findings by relevance
+to the change, but it will never override `confirmed` status or modify the
+deterministic core.

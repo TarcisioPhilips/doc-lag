@@ -1,19 +1,20 @@
 # doc-lag
 
-> **Working name — verify availability before publishing.**
 > **License:** MIT — see [LICENSE](LICENSE).
 
 **Your code changed. Did your docs keep up?**
 
 doc-lag is a local-first CLI that identifies documentation impacted by
-code changes. It connects a Git diff to documented commands and (later) local
-file references and configuration facts, producing **evidence-backed findings**
+code changes. It connects a Git diff to documented commands, local file
+references, and configuration facts, producing **evidence-backed findings**
 for developers and CI.
 
 > **Project status: early local preview.** This repository is not published to
-> npm. Only the first rule is implemented: `package.json` scripts removed or
-> renamed in a Git range, still referenced from Markdown. Other planned checks
-> (local links, env files, GitHub Action, MCP) are not available yet.
+> npm. Two rules are implemented: `scripts.missing` (package.json scripts
+> removed or renamed in a Git range, still referenced from Markdown) and
+> `links.broken` (local Markdown links and file paths pointing to files deleted
+> or renamed in the diff). Other planned checks (env files, GitHub Action, MCP)
+> are not available yet.
 
 ## Why?
 
@@ -54,9 +55,15 @@ Evidence: package.json#scripts
   base: "deploy:preview" was present
   head: "deploy:preview" is absent
 Suggested action: Update the documented command or restore the script.
+
+links.broken:README.md:15:src/lib/utils.ts  CONFIRMED  README.md:15
+`[utils](src/lib/utils.ts)` references a file that was renamed in this diff.
+Evidence: src/lib/utils.ts
+  renamed → src/lib/helpers.ts
+Suggested action: The file was renamed to `src/lib/helpers.ts`. Update the link to point to the new path.
 ```
 
-The example above is illustrative. Exact IDs and lines depend on the scanned
+The examples above are illustrative. Exact IDs and lines depend on the scanned
 repository.
 
 ### Options
@@ -85,8 +92,11 @@ Findings are always written to stdout. Errors go to stderr. The tool does
 Implemented now:
 
 - PR-aware scans based on a Git range (`--base` / `--head`)
-- Detect documented `npm run`, `pnpm run` / `pnpm`, `yarn run` / `yarn`, and
-  `bun run` invocations of scripts removed or renamed in `package.json`
+- **`scripts.missing`**: Detect documented `npm run`, `pnpm run` / `pnpm`,
+  `yarn run` / `yarn`, and `bun run` invocations of scripts removed or renamed
+  in `package.json`
+- **`links.broken`**: Detect local Markdown links and file paths pointing to
+  files deleted or renamed in the diff (see [Limitations](#links-broken-limitations))
 - Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`,
   `CONTRIBUTING.md`
 - Text and versioned JSON output with CI-friendly exit codes
@@ -94,9 +104,26 @@ Implemented now:
 
 Planned, not implemented yet:
 
-- Local links and file paths
 - Explicit env examples (`.env.example`)
 - GitHub Action, SARIF, MCP, semantic ranking
+
+### links.broken limitations
+
+The `links.broken` rule detects broken local links **caused by the diff**. It
+does not report:
+
+- Pre-existing broken links that were already invalid at the base ref
+- External URLs (http://, https://, mailto:, etc.) — these are ignored entirely
+- Broken anchor targets within files (only file existence is checked)
+
+Confidence levels:
+
+- **confirmed**: Standard Markdown links (`[text](path)`) and image links
+  (`![alt](path)`) to files deleted or renamed in the diff
+- **needs-review**: Inline code paths (`` `src/foo.ts` ``) that look like repo
+  paths — these are heuristic matches and do not fail CI by default
+
+When git detects a rename, the finding includes the new path as a suggested fix.
 
 ## What this will *not* do
 
