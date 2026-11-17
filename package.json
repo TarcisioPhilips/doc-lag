@@ -3,8 +3,28 @@
   "version": "0.2.0",
   "description": "Detect documentation that may be stale after a code change, with traceable evidence.",
   "type": "module",
-  "private": true,
   "license": "MIT",
+  "author": "Tarcisio Philips",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TarcisioPhilips/doc-lag.git"
+  },
+  "homepage": "https://github.com/TarcisioPhilips/doc-lag#readme",
+  "bugs": {
+    "url": "https://github.com/TarcisioPhilips/doc-lag/issues"
+  },
+  "keywords": [
+    "documentation",
+    "docs",
+    "stale-docs",
+    "drift",
+    "pull-request",
+    "github-action",
+    "mcp",
+    "mcp-server",
+    "cli",
+    "ci"
+  ],
   "bin": {
     "doc-lag": "dist/cli.js",
     "doc-lag-mcp": "dist/mcp/main.js"
@@ -28,7 +48,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "scan": "tsx src/cli.ts scan",
-    "mcp": "tsx src/cli.ts mcp"
+    "mcp": "tsx src/cli.ts mcp",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
