@@ -1,7 +1,5 @@
 name: doc-lag
-description: >
-  Scan a pull request git range for documentation made stale by the change,
-  with evidence-backed findings. Posts a sticky PR comment and job summary.
+description: Catch docs made stale by a pull request. Evidence-backed findings as a sticky PR comment.
 author: TarcisioPhilips
 branding:
   icon: file-text
