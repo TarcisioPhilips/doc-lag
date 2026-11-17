@@ -25,8 +25,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "scan": "tsx src/cli.ts scan"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "commander": "^14.0.2"
