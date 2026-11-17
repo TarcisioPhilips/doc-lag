@@ -92,17 +92,38 @@ Examples:
       process.exitCode = result.exitCode;
     });
 
+  program
+    .command("mcp")
+    .description(
+      "Start the read-only MCP server over stdio (for Cursor, Claude Code, VS Code, Codex). Does not write to stdout except MCP messages.",
+    )
+    .option("--cwd <path>", "Workspace root used to constrain tool path arguments")
+    .addHelpText(
+      "after",
+      `
+Examples:
+  doc-lag mcp
+  doc-lag mcp --cwd /path/to/repo
+`,
+    )
+    .action(async (opts: { cwd?: string }) => {
+      const { runMcpStdio } = await import("./mcp/stdio.js");
+      await runMcpStdio({
+        workspaceRoot: path.resolve(opts.cwd ?? process.cwd()),
+      });
+    });
+
   return program;
 }
 
-export function runCli(argv: string[]): void {
+export async function runCli(argv: string[]): Promise<void> {
   const program = createProgram();
   program.configureOutput({
     writeOut: (str) => process.stdout.write(str),
     writeErr: (str) => process.stderr.write(str),
   });
   try {
-    program.parse(argv);
+    await program.parseAsync(argv);
   } catch (error) {
     if (error instanceof ScanError) {
       process.stderr.write(`${error.message}\n`);
@@ -137,5 +158,5 @@ const isEntry =
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isEntry) {
-  runCli(process.argv);
+  void runCli(process.argv);
 }

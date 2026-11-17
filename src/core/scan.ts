@@ -17,6 +17,7 @@ import {
   readFileAt,
   resolveRef,
 } from "./git.js";
+import { materializeWorkingTreeCommit } from "./working-tree.js";
 
 function isPackageJson(filePath: string): boolean {
   return filePath === "package.json" || filePath.endsWith("/package.json");
@@ -33,7 +34,10 @@ export function scan(options: ScanOptions): ScanReport {
   const cwd = options.cwd;
   assertGitRepository(cwd);
   const base = resolveRef(cwd, options.base);
-  const head = resolveRef(cwd, options.head);
+  const headLabel = options.includeWorkingTree ? "WORKING_TREE" : options.head;
+  const head = options.includeWorkingTree
+    ? materializeWorkingTreeCommit(cwd)
+    : resolveRef(cwd, options.head);
 
   const baseFiles = listFiles(cwd, base);
   const headFiles = listFiles(cwd, head);
@@ -74,7 +78,7 @@ export function scan(options: ScanOptions): ScanReport {
     tool: TOOL_NAME,
     mode: "diff",
     base: options.base,
-    head: options.head,
+    head: headLabel,
     findings,
     summary: summarize(findings),
   };

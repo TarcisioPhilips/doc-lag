@@ -7,12 +7,17 @@ function isExecError(error: unknown): error is SpawnSyncReturns<string> {
   return Boolean(error && typeof error === "object" && "status" in error);
 }
 
-export function git(cwd: string, args: string[]): string {
+export function git(
+  cwd: string,
+  args: string[],
+  options: { env?: NodeJS.ProcessEnv } = {},
+): string {
   try {
     return execFileSync("git", ["-C", cwd, ...args], {
       encoding: "utf8",
       maxBuffer: 20 * 1024 * 1024,
       stdio: ["ignore", "pipe", "pipe"],
+      env: options.env,
     });
   } catch (error) {
     const stderr = isExecError(error) ? String(error.stderr ?? "").trim() : "";

@@ -7,19 +7,21 @@ repository, and never modifies that repository.
 ## Pipeline
 
 ```
-git range (base..head)
+git range (base..head)  [optional: ephemeral WORKING_TREE commit]
   → source extractors     (facts from changed manifests, env examples, path changes)
   → documentation discovery
   → documentation extractors (references in Markdown: scripts, links, env vars)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
   → reporters + exit code (text / JSON / SARIF)
-  → (optional) GitHub Action adapter: sticky comment + job summary
+  → adapters: CLI · GitHub Action · MCP (stdio, read-only tools)
 ```
 
 Orchestration lives in `src/core/scan.ts`. Git access is confined to
 `src/core/git.ts`, which only runs `git` with argument arrays (no shell, and
-never a command parsed from a README).
+never a command parsed from a README). Working-tree scans use a temporary
+index + `commit-tree` snapshot (`src/core/working-tree.ts`) so the real index
+and stash are untouched.
 
 ## Modules
 
@@ -40,7 +42,11 @@ never a command parsed from a README).
 | `src/reporters/` | Text, JSON, and SARIF output, CI exit codes |
 | `src/action/` | GitHub Action runner: inputs/outputs, sticky comment, job summary |
 | `action.yml` | Composite Action entry (build-from-source) |
-| `src/cli.ts` | Commander interface |
+| `src/mcp/` | Read-only MCP server (stdio): `scan_diff`, `explain_finding`, `list_rules` |
+| `src/core/paths.ts` | Constrain tool paths to the workspace/repo root |
+| `src/core/default-base.ts` | Default base = merge-base with main/master |
+| `src/core/working-tree.ts` | Ephemeral working-tree commit for uncommitted scans |
+| `src/cli.ts` | Commander interface (`scan`, `mcp`) |
 
 ## Adding a later rule
 
@@ -131,15 +137,39 @@ upload with `github/codeql-action/upload-sarif`.
 
 `fail-on: confirmed|none` maps to the same exit codes as the CLI.
 
-## Design for future MCP and Jev integration
+## MCP adapter (read-only)
 
-The finding structure is designed for future consumption by an MCP server
-(read-only `scan_diff`, `get_finding`, `explain_impact` tools) and an optional
-Jev semantic-ranking layer, without breaking changes:
+`src/mcp/` wraps the same `scan()` core used by the CLI and GitHub Action.
+Entry points: `doc-lag mcp` (stdio) and the `doc-lag-mcp` bin.
+
+| Tool | Role |
+| --- | --- |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`; optional `include_working_tree`) |
+| `explain_finding` | Re-scan and return one finding by stable id with full evidence |
+| `list_rules` | List deterministic rules (`scripts.missing`, `links.broken`, `env.stale`) |
+
+Trust / safety:
+
+- All tools advertise `readOnlyHint: true`, `destructiveHint: false`,
+  `openWorldHint: false` (no network).
+- `cwd` arguments are resolved with `constrainToRoot` against the MCP workspace
+  root; path traversal outside the repo is rejected.
+- The server never executes commands found in documentation and never modifies
+  the scanned repository (working-tree mode only creates unreachable ephemeral
+  git objects via a temp index).
+
+Handlers live in `src/mcp/handlers.ts` so unit tests can exercise behavior
+without a transport; `tests/mcp-server.test.ts` covers in-process
+(`InMemoryTransport`) and stdio client round trips.
+
+## Design for Jev integration (optional, future)
+
+The finding structure remains the hook point for an optional Jev (or other)
+semantic-ranking layer, without breaking the MCP/CLI contract:
 
 - **Stable IDs**: Finding IDs are content-derived (`ruleId:docPath:line:name`),
-  not sequential. This allows MCP clients to reference specific findings across
-  sessions and Jev to correlate findings with ranking signals.
+  not sequential. MCP clients reference specific findings across sessions; a
+  ranker can correlate findings with ranking signals.
 
 - **Evidence array**: Each finding includes an `evidence` array with structured
   provenance (source path, JSON pointer or status, base/head values). This
@@ -158,7 +188,6 @@ Jev semantic-ranking layer, without breaking changes:
 - **Deterministic output**: Same inputs produce identical JSON (sorted findings,
   stable IDs). This is essential for CI gating and for Jev evaluation baselines.
 
-The MCP adapter (P1) will expose the scan pipeline as read-only tools. The Jev
-integration (P2) will optionally re-rank `needs-review` findings by relevance
-to the change, but it will never override `confirmed` status or modify the
-deterministic core.
+A future Jev adapter would sit *after* the normalizer (and optionally expose a
+separate MCP tool), never inside the rule evaluators, and never override
+`confirmed` status or modify the deterministic core.
