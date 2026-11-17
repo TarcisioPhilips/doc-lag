@@ -1,6 +1,6 @@
 {
   "name": "doc-lag",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Detect documentation that may be stale after a code change, with traceable evidence.",
   "type": "module",
   "private": true,
@@ -30,7 +30,6 @@
     "scan": "tsx src/cli.ts scan",
     "mcp": "tsx src/cli.ts mcp"
   },
-
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "commander": "^14.0.2",
