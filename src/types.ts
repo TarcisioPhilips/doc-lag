@@ -97,3 +97,27 @@ export interface PathChange {
   newPath?: string;
   status: "deleted" | "renamed";
 }
+
+export interface EnvSnapshot {
+  path: string;
+  keys: Set<string>;
+}
+
+export interface EnvChange {
+  path: string;
+  kind: ChangeKind;
+  baseKeys: Set<string>;
+  headKeys: Set<string>;
+  removed: string[];
+  added: string[];
+}
+
+export type EnvReferenceKind = "assignment" | "inline-code" | "table-cell";
+
+export interface EnvReference {
+  docPath: string;
+  line: number;
+  key: string;
+  raw: string;
+  kind: EnvReferenceKind;
+}

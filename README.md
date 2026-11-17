@@ -10,11 +10,12 @@ references, and configuration facts, producing **evidence-backed findings**
 for developers and CI.
 
 > **Project status: early local preview.** This repository is not published to
-> npm. Two rules are implemented: `scripts.missing` (package.json scripts
-> removed or renamed in a Git range, still referenced from Markdown) and
+> npm. Three rules are implemented: `scripts.missing` (package.json scripts
+> removed or renamed in a Git range, still referenced from Markdown),
 > `links.broken` (local Markdown links and file paths pointing to files deleted
-> or renamed in the diff). Other planned checks (env files, GitHub Action, MCP)
-> are not available yet.
+> or renamed in the diff), and `env.stale` (environment variables removed from
+> `.env.example` files but still documented). Other planned checks (GitHub
+> Action publishing, MCP, semantic ranking) are not available yet.
 
 ## Why?
 
@@ -61,6 +62,11 @@ links.broken:README.md:15:src/lib/utils.ts  CONFIRMED  README.md:15
 Evidence: src/lib/utils.ts
   renamed → src/lib/helpers.ts
 Suggested action: The file was renamed to `src/lib/helpers.ts`. Update the link to point to the new path.
+
+env.stale:docs/setup.md:8:DATABASE_URL  CONFIRMED  docs/setup.md:8
+`DATABASE_URL` is referenced in documentation but was removed from .env.example.
+Evidence: .env.example/env/DATABASE_URL
+Suggested action: Update the documentation to remove the reference or restore the env var.
 ```
 
 The examples above are illustrative. Exact IDs and lines depend on the scanned
@@ -97,6 +103,9 @@ Implemented now:
   in `package.json`
 - **`links.broken`**: Detect local Markdown links and file paths pointing to
   files deleted or renamed in the diff (see [Limitations](#links-broken-limitations))
+- **`env.stale`**: Detect environment variables removed from `.env.example`,
+  `.env.sample`, `.env.template` and similar committed example files that are
+  still documented (see [Limitations](#env-stale-limitations))
 - Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`,
   `CONTRIBUTING.md`
 - Text and versioned JSON output with CI-friendly exit codes
@@ -104,8 +113,7 @@ Implemented now:
 
 Planned, not implemented yet:
 
-- Explicit env examples (`.env.example`)
-- GitHub Action, SARIF, MCP, semantic ranking
+- Published GitHub Action, SARIF output, MCP adapter, semantic ranking
 
 ### links.broken limitations
 
@@ -125,6 +133,28 @@ Confidence levels:
 
 When git detects a rename, the finding includes the new path as a suggested fix.
 
+### env.stale limitations
+
+The `env.stale` rule detects documentation that still references environment
+variables **removed or renamed in the diff** from committed example files
+(`.env.example`, `.env.sample`, `.env.template`, and similar). It does not
+report:
+
+- Pre-existing stale references that were already invalid at the base ref
+- Real `.env` files that may contain secrets — only committed example files
+  are read, and only via git at the given refs
+- Freeform prose that mentions a concept without an extractable env key
+
+Confidence levels:
+
+- **confirmed**: Assignments in code blocks (`FOO_BAR=...`) and inline code
+  mentions (`` `FOO_BAR` `` / `` `FOO_BAR=...` ``) matching a removed key
+- **needs-review**: Bare keys in Markdown table cells — heuristic matches that
+  do not fail CI by default (`--fail-on confirmed`)
+
+When a single key is removed and a single key is added in the same example
+file, the finding includes a rename hint.
+
 ## What this will *not* do
 
 - Automatically rewrite docs
@@ -135,9 +165,8 @@ When git detects a rename, the finding includes the new path as a suggested fix.
 
 ## Roadmap
 
-1. Local read-only deterministic CLI (in progress; first rule only).
-2. Additional deterministic rules, then a tested GitHub Actions workflow,
-   optional SARIF, and agent-facing MCP integration.
+1. Local read-only deterministic CLI (scripts, links, and env rules).
+2. Optional SARIF output and agent-facing MCP integration.
 3. Optional semantic ranking (evaluate Jev versus simpler approaches first).
 4. GitHub Pages only after initial developer adoption.
 

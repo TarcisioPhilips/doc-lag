@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # Stable required-status name (does not change with the Node matrix).
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: always()
+    steps:
+      - name: Require Build and Test success
+        run: |
+          if [ "${{ needs.build-and-test.result }}" != "success" ]; then
+            echo "Build and Test failed: ${{ needs.build-and-test.result }}"
+            exit 1
+          fi
+
+  dogfood:
+    name: Dogfood
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run doc-lag on this PR
+        continue-on-error: true
+        run: |
+          node dist/cli.js scan \
+            --base "origin/${{ github.base_ref }}" \
+            --head HEAD \
+            --fail-on none \
+            --format text
