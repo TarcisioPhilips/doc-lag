@@ -120,8 +120,10 @@ It always writes:
 - a GitHub Job Summary (same content as the comment, without the HTML marker)
 
 When `comment: true`, it upserts a single sticky PR comment identified by
-`<!-- doc-lag-sticky -->`. If the token cannot write comments (common on fork
-PRs: 401/403/404), it logs a warning and continues — the job still gets the
+`<!-- doc-lag-sticky -->`, **including when there are zero findings** (the
+body says so explicitly). Re-runs update that same comment rather than
+creating a new one. If the token cannot write comments (common on fork PRs:
+401/403/404), it logs a warning and continues — the job still gets the
 summary and does **not** fail for that reason.
 
 When `sarif: true`, it also writes SARIF 2.1.0 (`sarif-path`) for optional

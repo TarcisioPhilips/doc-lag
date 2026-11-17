@@ -212,6 +212,13 @@ jobs:
 **Outputs:** `findings-count`, `confirmed-count`, `needs-review-count`,
 `report-path`, `sarif-path`.
 
+**Zero findings:** when `comment: true`, the Action still creates or updates
+the sticky PR comment (and always writes the job summary), with an explicit
+“No documentation drift findings for this range.” message. That makes it
+obvious the scan ran. Set `comment: false` to suppress the PR comment and
+rely on the job summary / outputs only. Re-runs upsert the same sticky
+comment (matched by `<!-- doc-lag-sticky -->`) instead of posting duplicates.
+
 The Action is a **composite action that installs and builds from source** in
 `${{ github.action_path }}` (locked by `package-lock.json`). That avoids
 committing a bundled `dist/` for the Action while keeping external consumers
