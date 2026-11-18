@@ -1,6 +1,6 @@
 {
   "name": "doc-lag",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Detect documentation that may be stale after a code change, with traceable evidence.",
   "type": "module",
   "license": "MIT",
@@ -38,6 +38,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "PROJECT_SPEC.md"
   ],
   "engines": {

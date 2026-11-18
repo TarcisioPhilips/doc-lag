@@ -29,5 +29,5 @@ Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag
 
 ## Versions
 
-- Published npm: 0.2.1 (CLI `scan` / `mcp`, Action `@v0`, no `--rank`)
-- Optional Jev ranking (`--rank jev`): on `main`, ships as 0.3.0 — enable only when the user asks; requires TYPESAFE_API_KEY
+- npm / Action `@v0`: **0.3.0** — CLI `scan` / `mcp`, optional `--rank jev` (requires `TYPESAFE_API_KEY`; enable only when the user asks)
+- Changelog: https://github.com/TarcisioPhilips/doc-lag/blob/main/CHANGELOG.md
