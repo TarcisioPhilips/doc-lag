@@ -97,6 +97,12 @@ export function formatSarif(report: ScanReport): string {
             docLagStatus: finding.status,
             docLagChangePath: finding.change.path,
             docLagChangeKind: finding.change.kind,
+            ...(finding.ranking
+              ? {
+                  docLagJevScore: finding.ranking.score,
+                  docLagJevConfidence: finding.ranking.confidence,
+                }
+              : {}),
           },
         })),
       },

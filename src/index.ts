@@ -1,4 +1,5 @@
 export { scan } from "./core/scan.js";
+export { scanWithRanking } from "./core/scan-with-ranking.js";
 export { ScanError } from "./errors.js";
 export { formatJson } from "./reporters/json.js";
 export { formatSarif } from "./reporters/sarif.js";
@@ -16,13 +17,29 @@ export {
   handleListRules,
 } from "./mcp/handlers.js";
 export { listRules } from "./mcp/rules.js";
+export { applyJevRanking, parseRankProvider } from "./ranking/jev-rank.js";
+export {
+  buildScoreRequest,
+  estimateCostUsd,
+  scoreWithJev,
+} from "./ranking/jev-client.js";
+export { redactSecrets } from "./ranking/redact.js";
+export {
+  JEV_MODEL,
+  JEV_PRIVACY_NOTICE,
+  TYPESAFE_API_KEY_ENV,
+} from "./ranking/constants.js";
 export { SCHEMA_VERSION, TOOL_NAME } from "./types.js";
 export type {
   FailOn,
   Finding,
+  FindingRanking,
   OutputFormat,
+  RankProvider,
+  RankingInfo,
   ScanOptions,
   ScanReport,
 } from "./types.js";
 export type { RuleInfo } from "./mcp/rules.js";
 export type { McpHandlerContext } from "./mcp/handlers.js";
+export type { ScanWithRankingOptions } from "./core/scan-with-ranking.js";

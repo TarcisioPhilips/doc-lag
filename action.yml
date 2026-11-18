@@ -41,6 +41,15 @@ inputs:
       pull_request events.
     required: false
     default: ""
+  rank:
+    description: >
+      Optional semantic ranking. `none` (default) keeps the scan offline and
+      deterministic. `jev` reorders needs-review/unknown findings via TypeSafe
+      AI Jev; requires secret TYPESAFE_API_KEY. Sends PR diff summaries and
+      documentation excerpts to a third-party API. Never changes finding
+      statuses — ordering/evidence only.
+    required: false
+    default: none
 
 outputs:
   findings-count:
@@ -86,13 +95,16 @@ runs:
       id: run
       shell: bash
       # Scan the consumer workspace; never execute commands found in docs.
-      # Network beyond this step is only the GitHub API for sticky comments.
+      # Network: GitHub API for sticky comments; TypeSafe AI only when rank=jev
+      # (requires TYPESAFE_API_KEY secret in the workflow env).
       env:
         DOC_LAG_FAIL_ON: ${{ inputs.fail-on }}
         DOC_LAG_COMMENT: ${{ inputs.comment }}
         DOC_LAG_WORKING_DIRECTORY: ${{ inputs.working-directory }}
         DOC_LAG_SARIF: ${{ inputs.sarif }}
+        DOC_LAG_RANK: ${{ inputs.rank }}
         DOC_LAG_BASE: ${{ inputs.base }}
         DOC_LAG_HEAD: ${{ inputs.head }}
         GITHUB_TOKEN: ${{ github.token }}
+        TYPESAFE_API_KEY: ${{ env.TYPESAFE_API_KEY }}
       run: node "${{ github.action_path }}/dist/action/main.js"

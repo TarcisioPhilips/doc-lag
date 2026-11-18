@@ -12,7 +12,8 @@ for developers and CI.
 > **Project status: early local preview.** This repository is not published to
 > npm. Three rules are implemented: `scripts.missing`, `links.broken`, and
 > `env.stale`. A composite GitHub Action and a read-only MCP server (stdio) are
-> available from this repository. Semantic ranking is not available yet.
+> available from this repository. Optional Jev semantic ranking is opt-in only
+> (`--rank jev`); the default scan stays offline and deterministic.
 
 ## Why?
 
@@ -77,7 +78,10 @@ repository.
 | `--head <ref>` | `HEAD` | Head Git ref |
 | `--format <text\|json\|sarif>` | `text` | Output format |
 | `--fail-on <confirmed\|none>` | `confirmed` | CI threshold |
+| `--rank <none\|jev>` | `none` | Optional semantic ranking (see below) |
 | `--cwd <path>` | current directory | Repository to scan |
+
+`DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted.
 
 ### Exit codes
 
@@ -110,10 +114,11 @@ Implemented now:
 - Read-only MCP server (`doc-lag mcp`) for coding agents
 - Offline-by-default scan (no signup, no API keys; Action may call the GitHub
   API only to create/update the sticky comment)
+- Optional semantic ranking with Jev (`--rank jev`) — ordering only; see below
 
 Planned, not implemented yet:
 
-- Optional semantic ranking (evaluate Jev versus simpler baselines first)
+- GitHub Pages only after initial developer adoption
 
 ### links.broken limitations
 
@@ -159,9 +164,40 @@ file, the finding includes a rename hint.
 
 - Automatically rewrite docs
 - Decide whether freeform prose is semantically correct
-- Upload repo contents to AI services
-- Require MCP, Jev, or another external model
+- Upload repo contents to AI services **unless you opt into `--rank jev`**
+- Require MCP, Jev, or another external model (default remains local)
 - Execute, install, or evaluate commands mentioned in the scanned repository
+
+## Optional: semantic ranking with Jev
+
+By default doc-lag is offline. You can optionally reorder `needs-review` /
+`unknown` findings with **[Jev](https://docs.typesafe.ai)** (TypeSafe AI’s
+non-generative System One model). Ranking never changes a finding’s `status`
+and never upgrades anything to `confirmed` — it only changes review order and
+attaches score/confidence as extra evidence.
+
+Evaluated on **43 public PRs from 13 open-source projects** (not an endorsement
+of those projects, TypeSafe, or Jev):
+
+| Ranker | nDCG@3 | P@2 |
+| --- | ---: | ---: |
+| Jev (`score`) | 0.86 | 0.96 |
+| Path overlap | 0.73 | 0.88 |
+| BM25 | 0.62 | 0.72 |
+
+Rough cost/latency on that set: ~US$0.007 total and ~0.4s per case.
+
+```bash
+export TYPESAFE_API_KEY="your-key"   # https://console.typesafe.ai
+doc-lag scan --base main --head HEAD --rank jev
+```
+
+**Privacy:** when ranking is enabled, PR diff summaries and documentation
+excerpts are sent to `https://api.typesafe.ai`. The key is read only from
+`TYPESAFE_API_KEY` and is never logged. Missing key → clear error (exit 2).
+Timeouts, 4xx/5xx, and rate limits fall back to deterministic order with a
+warning. Token usage and estimated cost are reported when ranking applies
+(candidate and text size caps keep requests bounded).
 
 ## MCP server (coding agents)
 
@@ -176,11 +212,11 @@ node dist/cli.js mcp
 npm run mcp
 ```
 
-Tools (all annotated read-only; no network; paths constrained to the workspace):
+Tools (all annotated read-only; paths constrained to the workspace):
 
 | Tool | Purpose |
 | --- | --- |
-| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` to include uncommitted edits. |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` to include uncommitted edits. Optional `rank: "jev"` (requires `TYPESAFE_API_KEY`). |
 | `explain_finding` | Re-scan and return one finding by stable id with full evidence. |
 | `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
 
@@ -246,6 +282,19 @@ Add to `.vscode/mcp.json` (or user MCP settings):
   "name": "scan_diff",
   "arguments": {
     "include_working_tree": true
+  }
+}
+```
+
+Optional ranking (sends diff + doc excerpts to TypeSafe AI):
+
+```json
+{
+  "name": "scan_diff",
+  "arguments": {
+    "base": "main",
+    "head": "HEAD",
+    "rank": "jev"
   }
 }
 ```
@@ -317,6 +366,7 @@ jobs:
           comment: true                 # sticky PR comment (default: true)
           working-directory: .          # optional subdirectory
           sarif: false                  # optional SARIF file for code scanning
+          rank: none                    # none | jev (default: none)
 
       # Optional: surface findings in GitHub code scanning
       # - if: steps.doc-lag.outputs.sarif-path != ''
@@ -326,7 +376,19 @@ jobs:
       #     category: doc-lag
 ```
 
-**Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, optional
+Optional Jev ranking (secret + input):
+
+```yaml
+      - name: doc-lag
+        uses: TarcisioPhilips/doc-lag@v0
+        with:
+          fail-on: confirmed
+          rank: jev
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+```
+
+**Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, `rank`, optional
 `base` / `head` overrides.  
 **Outputs:** `findings-count`, `confirmed-count`, `needs-review-count`,
 `report-path`, `sarif-path`.
@@ -376,7 +438,7 @@ Scanned `aaa111..bbb222` — **1** confirmed, **1** needs-review.
 1. Local read-only deterministic CLI (scripts, links, and env rules).
 2. Tested GitHub Action + optional SARIF (this repository).
 3. Agent-facing MCP integration (this repository: `doc-lag mcp`).
-4. Optional semantic ranking (evaluate Jev versus simpler approaches first).
+4. Optional semantic ranking with Jev (this repository: `--rank jev`).
 5. GitHub Pages only after initial developer adoption.
 
 ## Differences from existing tools

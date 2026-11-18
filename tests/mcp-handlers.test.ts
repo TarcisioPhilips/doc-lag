@@ -29,7 +29,7 @@ function track(fixture: FixtureRepo): FixtureRepo {
 }
 
 describe("MCP handlers", () => {
-  it("scan_diff reports scripts.missing for a committed range", () => {
+  it("scan_diff reports scripts.missing for a committed range", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -42,7 +42,7 @@ describe("MCP handlers", () => {
       }),
     );
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, head: fixture.head },
     );
@@ -54,7 +54,7 @@ describe("MCP handlers", () => {
     expect(result.data.head).toBe(fixture.head);
   });
 
-  it("scan_diff include_working_tree catches uncommitted script removal", () => {
+  it("scan_diff include_working_tree catches uncommitted script removal", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -67,7 +67,7 @@ describe("MCP handlers", () => {
     // Uncommitted change: remove the script from package.json on disk.
     writeFileSync(path.join(fixture.repo, "package.json"), packageJson({}), "utf8");
 
-    const committed = handleScanDiff(
+    const committed = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, head: "HEAD", include_working_tree: false },
     );
@@ -76,7 +76,7 @@ describe("MCP handlers", () => {
       expect(committed.data.findings).toHaveLength(0);
     }
 
-    const dirty = handleScanDiff(
+    const dirty = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, head: "HEAD", include_working_tree: true },
     );
@@ -87,7 +87,7 @@ describe("MCP handlers", () => {
     expect(dirty.data.findings[0]?.id).toContain("scripts.missing");
   });
 
-  it("scan_diff defaults base via merge-base with main", () => {
+  it("scan_diff defaults base via merge-base with main", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -103,7 +103,7 @@ describe("MCP handlers", () => {
     git(fixture.repo, ["checkout", "-B", "feature", fixture.head]);
     git(fixture.repo, ["branch", "-f", "main", fixture.base]);
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { cwd: "." },
     );
@@ -115,7 +115,7 @@ describe("MCP handlers", () => {
     expect(result.data.base).toBe(fixture.base);
   });
 
-  it("explain_finding returns full evidence for a known id", () => {
+  it("explain_finding returns full evidence for a known id", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -128,7 +128,7 @@ describe("MCP handlers", () => {
       }),
     );
 
-    const scanned = handleScanDiff(
+    const scanned = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, head: fixture.head },
     );
@@ -149,7 +149,7 @@ describe("MCP handlers", () => {
     expect(explained.data.detail).toContain("CONFIRMED");
   });
 
-  it("explain_finding fails for unknown id", () => {
+  it("explain_finding fails for unknown id", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -172,7 +172,7 @@ describe("MCP handlers", () => {
     expect(result.data.error).toContain("Finding not found");
   });
 
-  it("rejects empty finding_id and empty refs", () => {
+  it("rejects empty finding_id and empty refs", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -184,11 +184,11 @@ describe("MCP handlers", () => {
     const ctx = { workspaceRoot: fixture.repo };
 
     expect(handleExplainFinding(ctx, { finding_id: "  " }).ok).toBe(false);
-    expect(handleScanDiff(ctx, { base: "", head: fixture.head }).ok).toBe(false);
-    expect(handleScanDiff(ctx, { base: fixture.base, head: "" }).ok).toBe(false);
+    expect((await handleScanDiff(ctx, { base: "", head: fixture.head })).ok).toBe(false);
+    expect((await handleScanDiff(ctx, { base: fixture.base, head: "" })).ok).toBe(false);
   });
 
-  it("rejects cwd path traversal outside the workspace root", () => {
+  it("rejects cwd path traversal outside the workspace root", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -198,7 +198,7 @@ describe("MCP handlers", () => {
       }),
     );
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { cwd: "../", base: fixture.base, head: fixture.head },
     );
@@ -207,7 +207,7 @@ describe("MCP handlers", () => {
     expect(result.data.error).toMatch(/escapes repository root/i);
   });
 
-  it("rejects absolute cwd outside the workspace root", () => {
+  it("rejects absolute cwd outside the workspace root", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -218,7 +218,7 @@ describe("MCP handlers", () => {
     );
     const outside = path.resolve(fixture.repo, "..");
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { cwd: outside, base: fixture.base, head: fixture.head },
     );
@@ -227,7 +227,7 @@ describe("MCP handlers", () => {
     expect(result.data.error).toMatch(/escapes repository root/i);
   });
 
-  it("rejects invalid git refs", () => {
+  it("rejects invalid git refs", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -237,7 +237,7 @@ describe("MCP handlers", () => {
       }),
     );
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: "definitely-not-a-ref", head: "HEAD" },
     );
@@ -246,7 +246,7 @@ describe("MCP handlers", () => {
     expect(result.data.error).toMatch(/Invalid git ref|failed/i);
   });
 
-  it("list_rules returns the three shipped rules", () => {
+  it("list_rules returns the three shipped rules", async () => {
     const result = handleListRules();
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -265,7 +265,7 @@ describe("MCP handlers working-tree untracked docs", () => {
     }
   });
 
-  it("picks up untracked markdown that references a removed script", () => {
+  it("picks up untracked markdown that references a removed script", async () => {
     const fixture = createFixtureRepo({
       baseFiles: {
         "package.json": packageJson({ "deploy:preview": "vite preview" }),
@@ -277,7 +277,7 @@ describe("MCP handlers working-tree untracked docs", () => {
     writeFileSync(path.join(fixture.repo, "package.json"), packageJson({}), "utf8");
     writeFileSync(path.join(fixture.repo, "AGENTS.md"), "Use `npm run deploy:preview`.\n", "utf8");
 
-    const result = handleScanDiff(
+    const result = await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, include_working_tree: true },
     );
@@ -286,7 +286,7 @@ describe("MCP handlers working-tree untracked docs", () => {
     expect(result.data.findings.some((f) => f.documentation.path === "AGENTS.md")).toBe(true);
   });
 
-  it("does not leave the real index dirty after working-tree snapshot", () => {
+  it("does not leave the real index dirty after working-tree snapshot", async () => {
     const fixture = createFixtureRepo({
       baseFiles: {
         "package.json": packageJson({ build: "tsc" }),
@@ -297,7 +297,7 @@ describe("MCP handlers working-tree untracked docs", () => {
 
     writeFileSync(path.join(fixture.repo, "README.md"), "changed\n", "utf8");
     const before = git(fixture.repo, ["status", "--porcelain"]);
-    handleScanDiff(
+    await handleScanDiff(
       { workspaceRoot: fixture.repo },
       { base: fixture.base, include_working_tree: true },
     );

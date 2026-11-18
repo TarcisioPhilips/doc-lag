@@ -1,14 +1,18 @@
 import { resolveDefaultBase } from "../core/default-base.js";
 import { constrainToRoot } from "../core/paths.js";
 import { scan } from "../core/scan.js";
+import { scanWithRanking } from "../core/scan-with-ranking.js";
 import { ScanError } from "../errors.js";
+import { parseRankProvider } from "../ranking/jev-rank.js";
 import { formatText } from "../reporters/text.js";
-import type { Finding, ScanReport } from "../types.js";
+import type { Finding, RankProvider, ScanReport } from "../types.js";
 import { listRules, type RuleInfo } from "./rules.js";
 
 export interface McpHandlerContext {
   /** Workspace root used to constrain `cwd` arguments. */
   workspaceRoot: string;
+  env?: NodeJS.ProcessEnv;
+  warn?: (message: string) => void;
 }
 
 export interface ScanDiffInput {
@@ -16,6 +20,11 @@ export interface ScanDiffInput {
   head?: string;
   include_working_tree?: boolean;
   cwd?: string;
+  /**
+   * Optional semantic ranking. `jev` reorders needs-review/unknown findings
+   * via TypeSafe AI (requires TYPESAFE_API_KEY). Default `none` is offline.
+   */
+  rank?: RankProvider | string;
 }
 
 export interface ExplainFindingInput {
@@ -107,18 +116,23 @@ function formatFindingExplanation(finding: Finding, report: ScanReport): string 
 /**
  * Run a PR-aware documentation drift scan.
  * Read-only: never executes commands from docs, never writes to the repo.
+ * Optional `rank: "jev"` may call the TypeSafe API (opt-in network).
  */
-export function handleScanDiff(
+export async function handleScanDiff(
   ctx: McpHandlerContext,
   input: ScanDiffInput = {},
-): ToolResult<ScanReport> {
+): Promise<ToolResult<ScanReport>> {
   try {
     const options = resolveScanOptions(ctx, input);
-    const report = scan({
+    const rank = parseRankProvider(input.rank);
+    const report = await scanWithRanking({
       cwd: options.cwd,
       base: options.base,
       head: options.head,
       includeWorkingTree: options.includeWorkingTree,
+      rank,
+      env: ctx.env,
+      warn: ctx.warn,
     });
     return {
       ok: true,

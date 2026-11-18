@@ -24,6 +24,12 @@ export interface ChangeInfo {
   kind: ChangeKind;
 }
 
+export interface FindingRanking {
+  provider: "jev";
+  score: number;
+  confidence: number;
+}
+
 export interface Finding {
   id: string;
   ruleId: string;
@@ -34,12 +40,37 @@ export interface Finding {
   evidence: EvidenceItem[];
   change: ChangeInfo;
   suggestion: string;
+  /**
+   * Optional semantic-ranking signals. Present only when `--rank jev` (or
+   * equivalent) successfully scored this finding. Never changes `status`.
+   */
+  ranking?: FindingRanking;
 }
 
 export interface ScanSummary {
   confirmed: number;
   needsReview: number;
   unknown: number;
+}
+
+/**
+ * Opt-in ranking metadata. Absent when ranking is disabled so default reports
+ * stay byte-compatible with schema 1.0 consumers that ignore unknown fields —
+ * and identical when ranking is off.
+ */
+export interface RankingInfo {
+  provider: "jev";
+  model: string;
+  /** True when at least one candidate was scored (or there were none to score). */
+  applied: boolean;
+  privacyNotice: string;
+  candidatesScored: number;
+  /** Rankable findings left in deterministic order because of the candidate cap. */
+  candidatesSkipped: number;
+  inputTokens: number;
+  estimatedCostUsd: number;
+  /** Set when ranking was requested but degraded to deterministic order. */
+  warning?: string;
 }
 
 export interface ScanReport {
@@ -50,7 +81,11 @@ export interface ScanReport {
   head: string;
   findings: Finding[];
   summary: ScanSummary;
+  /** Present only when semantic ranking was requested (`--rank jev`, etc.). */
+  ranking?: RankingInfo;
 }
+
+export type RankProvider = "none" | "jev";
 
 export interface ScanOptions {
   cwd: string;

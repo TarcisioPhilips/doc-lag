@@ -13,6 +13,7 @@ git range (base..head)  [optional: ephemeral WORKING_TREE commit]
   → documentation extractors (references in Markdown: scripts, links, env vars)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
+  → optional Jev ranking  (--rank jev only: reorder needs-review/unknown; never change status)
   → reporters + exit code (text / JSON / SARIF)
   → adapters: CLI · GitHub Action · MCP (stdio, read-only tools)
 ```
@@ -43,6 +44,8 @@ and stash are untouched.
 | `src/action/` | GitHub Action runner: inputs/outputs, sticky comment, job summary |
 | `action.yml` | Composite Action entry (build-from-source) |
 | `src/mcp/` | Read-only MCP server (stdio): `scan_diff`, `explain_finding`, `list_rules` |
+| `src/ranking/` | Optional Jev semantic ranking (HTTP client, redaction, caps) |
+| `src/core/scan-with-ranking.ts` | `scan()` plus opt-in ranking wrapper |
 | `src/core/paths.ts` | Constrain tool paths to the workspace/repo root |
 | `src/core/default-base.ts` | Default base = merge-base with main/master |
 | `src/core/working-tree.ts` | Ephemeral working-tree commit for uncommitted scans |
@@ -88,7 +91,8 @@ Repository content is untrusted input. Markdown, comments, `AGENTS.md`, and
 inside the repository tree at the given git refs. The scanner never executes
 commands found in documentation and does not open network connections during
 a scan. The GitHub Action may call the GitHub API solely to create or update
-the sticky PR comment.
+the sticky PR comment. Optional `--rank jev` / Action `rank: jev` / MCP
+`rank: "jev"` may call the TypeSafe AI API; the default path never does.
 
 ## GitHub Action packaging
 
@@ -144,14 +148,15 @@ Entry points: `doc-lag mcp` (stdio) and the `doc-lag-mcp` bin.
 
 | Tool | Role |
 | --- | --- |
-| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`; optional `include_working_tree`) |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`; optional `include_working_tree`; optional `rank: "jev"`) |
 | `explain_finding` | Re-scan and return one finding by stable id with full evidence |
 | `list_rules` | List deterministic rules (`scripts.missing`, `links.broken`, `env.stale`) |
 
 Trust / safety:
 
-- All tools advertise `readOnlyHint: true`, `destructiveHint: false`,
-  `openWorldHint: false` (no network).
+- All tools advertise `readOnlyHint: true`, `destructiveHint: false`.
+- `scan_diff` sets `openWorldHint: true` because optional `rank=jev` may call
+  TypeSafe AI; `explain_finding` and `list_rules` stay `openWorldHint: false`.
 - `cwd` arguments are resolved with `constrainToRoot` against the MCP workspace
   root; path traversal outside the repo is rejected.
 - The server never executes commands found in documentation and never modifies
@@ -162,32 +167,24 @@ Handlers live in `src/mcp/handlers.ts` so unit tests can exercise behavior
 without a transport; `tests/mcp-server.test.ts` covers in-process
 (`InMemoryTransport`) and stdio client round trips.
 
-## Design for Jev integration (optional, future)
+## Optional Jev semantic ranking
 
-The finding structure remains the hook point for an optional Jev (or other)
-semantic-ranking layer, without breaking the MCP/CLI contract:
+Implemented in `src/ranking/` and applied only through `scanWithRanking()` when
+`rank=jev` is requested (CLI `--rank jev` / `DOC_LAG_RANK`, Action `rank`, MCP
+`scan_diff.rank`). Default `scan()` remains offline and byte-identical.
 
 - **Stable IDs**: Finding IDs are content-derived (`ruleId:docPath:line:name`),
-  not sequential. MCP clients reference specific findings across sessions; a
-  ranker can correlate findings with ranking signals.
+  not sequential. Ranked findings keep the same ids.
+- **Evidence array**: Successful scores append `jev#relevance` evidence with
+  `score` / `confidence` (ordering signals only).
+- **Status granularity**: Jev may re-order `needs-review` / `unknown` findings
+  but cannot upgrade them to `confirmed` — only deterministic rules can.
+- **Versioned JSON schema**: `schemaVersion: "1.0"` with additive
+  `finding.ranking` and `report.ranking` when ranking is requested.
+- **Deterministic default**: Without ranking, same inputs produce identical JSON
+  (sorted findings, stable IDs).
+- **Privacy / failure policy**: Privacy notice on enable; key only from
+  `TYPESAFE_API_KEY`; missing key → clear error; timeouts/4xx/5xx/429 →
+  deterministic order + warning; secrets redacted from errors.
 
-- **Evidence array**: Each finding includes an `evidence` array with structured
-  provenance (source path, JSON pointer or status, base/head values). This
-  provides enough context for a ranking model to assess relevance without
-  re-parsing the repository.
-
-- **Status granularity**: Findings have a `status` field (`confirmed`,
-  `needs-review`, `unknown`) that separates deterministic checks from heuristic
-  matches. Jev may re-rank `needs-review` findings but cannot upgrade
-  `needs-review` to `confirmed`—only deterministic rules can do that.
-
-- **Versioned JSON schema**: The report includes `schemaVersion: "1.0"`. Future
-  additions (e.g., confidence scores, ranking metadata) will be additive fields
-  or a minor version bump, preserving backward compatibility.
-
-- **Deterministic output**: Same inputs produce identical JSON (sorted findings,
-  stable IDs). This is essential for CI gating and for Jev evaluation baselines.
-
-A future Jev adapter would sit *after* the normalizer (and optionally expose a
-separate MCP tool), never inside the rule evaluators, and never override
-`confirmed` status or modify the deterministic core.
+The adapter sits *after* the normalizer, never inside rule evaluators.

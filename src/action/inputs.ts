@@ -1,10 +1,12 @@
-import type { FailOn } from "../types.js";
+import type { FailOn, RankProvider } from "../types.js";
 
 export interface ActionInputs {
   failOn: FailOn;
   comment: boolean;
   workingDirectory: string;
   sarif: boolean;
+  /** Optional semantic ranking provider (`none` | `jev`). Default `none`. */
+  rank: RankProvider;
   /** Optional explicit base ref/sha; otherwise taken from the pull_request event. */
   base?: string;
   /** Optional explicit head ref/sha; otherwise taken from the pull_request event. */
@@ -50,6 +52,14 @@ function parseFailOn(raw: string | undefined): FailOn {
   throw new Error(`Invalid fail-on value "${raw}" (expected confirmed|none)`);
 }
 
+function parseRank(raw: string | undefined): RankProvider {
+  const value = (raw ?? "none").trim().toLowerCase();
+  if (value === "none" || value === "jev") {
+    return value;
+  }
+  throw new Error(`Invalid rank value "${raw}" (expected none|jev)`);
+}
+
 /**
  * Parse composite-action inputs from environment variables set in action.yml.
  */
@@ -59,6 +69,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv = process.env): ActionI
     comment: parseBoolean(readEnv("DOC_LAG_COMMENT", env), true),
     workingDirectory: readEnv("DOC_LAG_WORKING_DIRECTORY", env) ?? ".",
     sarif: parseBoolean(readEnv("DOC_LAG_SARIF", env), false),
+    rank: parseRank(readEnv("DOC_LAG_RANK", env)),
     base: readEnv("DOC_LAG_BASE", env),
     head: readEnv("DOC_LAG_HEAD", env),
   };
