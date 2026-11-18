@@ -23,6 +23,8 @@ It catches removed/renamed `package.json` scripts still documented as `npm`/`pnp
 commands, local Markdown links and paths broken by the diff, and env keys removed from
 committed example files (`.env.example` and similar) that docs still mention.
 
+![Terminal demo: after renaming API_TIMEOUT to REQUEST_TIMEOUT in .env.example, npx doc-lag scan reports a confirmed env.stale finding at docs/setup.md:3 with evidence and a rename suggestion](docs/demo/doc-lag-demo.gif)
+
 ---
 
 ## Quickstart (~1 minute)

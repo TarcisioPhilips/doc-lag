@@ -4,3 +4,5 @@ coverage/
 *.log
 .DS_Store
 .tmp/
+docs/demo/.last-demo-repo
+docs/demo/.last-demo-bin
