@@ -1,51 +1,14 @@
 # doc-lag
 
-> **License:** MIT — see [LICENSE](LICENSE).
+[![npm](https://img.shields.io/npm/v/doc-lag.svg)](https://www.npmjs.com/package/doc-lag)
+[![CI](https://github.com/TarcisioPhilips/doc-lag/actions/workflows/ci.yml/badge.svg)](https://github.com/TarcisioPhilips/doc-lag/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Your code changed. Did your docs keep up?**
 
-doc-lag is a local-first CLI that identifies documentation impacted by
-code changes. It connects a Git diff to documented commands, local file
-references, and configuration facts, producing **evidence-backed findings**
-for developers and CI.
-
-> **Project status: early local preview.** This repository is not published to
-> npm. Three rules are implemented: `scripts.missing`, `links.broken`, and
-> `env.stale`. A composite GitHub Action and a read-only MCP server (stdio) are
-> available from this repository. Optional Jev semantic ranking is opt-in only
-> (`--rank jev`); the default scan stays offline and deterministic.
-
-## Why?
-
-A pull request removes a script. The README still tells people to use it.
-Traditional tests pass; onboarding breaks. doc-lag shows what changed,
-where documentation became stale, and why.
-
-The scan is **PR-aware**: it reports references to scripts that *changed in
-the given diff*. A leftover command that was already stale before the change
-is not reported. That keeps the signal focused on the review at hand.
-
-## Run it locally
-
-Requires Node.js 20+ and Git. From this repository:
-
-```bash
-npm install
-npm test
-npm run build
-
-# Scan a Git range in any repository (this one, or another checkout)
-node dist/cli.js scan --base <base-ref> --head <head-ref>
-node dist/cli.js scan --base main --head HEAD --format json --fail-on confirmed
-```
-
-During development you can skip the build step:
-
-```bash
-npx tsx src/cli.ts scan --base <base-ref> --head <head-ref>
-# or
-npm run scan -- --base <base-ref> --head <head-ref>
-```
+doc-lag scans a Git range and reports documentation that this change made stale —
+with evidence, not guesses. Use it from the CLI, a GitHub Action, or an MCP server
+for coding agents.
 
 ```text
 scripts.missing:README.md:42:deploy:preview  CONFIRMED  README.md:42
@@ -54,21 +17,164 @@ Evidence: package.json#scripts
   base: "deploy:preview" was present
   head: "deploy:preview" is absent
 Suggested action: Update the documented command or restore the script.
-
-links.broken:README.md:15:src/lib/utils.ts  CONFIRMED  README.md:15
-`[utils](src/lib/utils.ts)` references a file that was renamed in this diff.
-Evidence: src/lib/utils.ts
-  renamed → src/lib/helpers.ts
-Suggested action: The file was renamed to `src/lib/helpers.ts`. Update the link to point to the new path.
-
-env.stale:docs/setup.md:8:DATABASE_URL  CONFIRMED  docs/setup.md:8
-`DATABASE_URL` is referenced in documentation but was removed from .env.example.
-Evidence: .env.example/env/DATABASE_URL
-Suggested action: Update the documentation to remove the reference or restore the env var.
 ```
 
-The examples above are illustrative. Exact IDs and lines depend on the scanned
-repository.
+It catches removed/renamed `package.json` scripts still documented as `npm`/`pnpm`/`yarn`/`bun`
+commands, local Markdown links and paths broken by the diff, and env keys removed from
+committed example files (`.env.example` and similar) that docs still mention.
+
+---
+
+## Quickstart (~1 minute)
+
+Requires **Node.js 20+** and Git.
+
+### CLI
+
+```bash
+# one-shot (no install)
+npx doc-lag scan --base main
+
+# or install globally
+npm install -g doc-lag
+doc-lag scan --base main --head HEAD
+```
+
+`--head` defaults to `HEAD`. Add `--format json` or `--format sarif` for machines; `--fail-on none` for advisory runs.
+
+### GitHub Action
+
+```yaml
+# .github/workflows/doc-lag.yml
+name: doc-lag
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  doc-lag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: doc-lag
+        uses: TarcisioPhilips/doc-lag@v0
+        with:
+          fail-on: confirmed
+```
+
+### MCP (coding agents)
+
+Published on npm as both `doc-lag mcp` and the `doc-lag-mcp` bin:
+
+```bash
+npx -y doc-lag mcp
+# equivalent:
+npx -y doc-lag-mcp
+```
+
+**Cursor** — `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "doc-lag": {
+      "command": "npx",
+      "args": ["-y", "doc-lag", "mcp"]
+    }
+  }
+}
+```
+
+**Claude Code:**
+
+```bash
+claude mcp add doc-lag -- npx -y doc-lag mcp
+```
+
+Or commit a project `.mcp.json` with the same `mcpServers` shape.
+
+**VS Code / Copilot** — `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "doc-lag": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "doc-lag", "mcp"]
+    }
+  }
+}
+```
+
+**Codex** — `.codex/config.toml` (project) or `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.doc-lag]
+command = "npx"
+args = ["-y", "doc-lag", "mcp"]
+```
+
+---
+
+## Set it up with your coding agent
+
+Paste this prompt into Claude Code, Cursor, Codex, or VS Code Copilot:
+
+````text
+Set up doc-lag in this repository following
+https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md
+
+Constraints:
+- Read-only setup: do not rewrite application docs unless I ask.
+- Do not commit secrets or API keys.
+- Add `.github/workflows/doc-lag.yml` with contents: read, pull-requests: write,
+  actions/checkout@v4 with fetch-depth: 0, and uses: TarcisioPhilips/doc-lag@v0.
+- Optionally register the MCP server for the tool I am using (Cursor `.cursor/mcp.json`,
+  Claude Code `claude mcp add` / `.mcp.json`, VS Code `.vscode/mcp.json`,
+  Codex `.codex/config.toml`) using `npx -y doc-lag mcp`.
+- Do not enable Jev ranking (`--rank jev` / `rank: jev`) unless I explicitly ask.
+- Run `npx doc-lag scan --base <default-branch>` (or merge-base) once and report findings.
+````
+
+One-liner for your agent:
+
+```text
+Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md
+```
+
+Machine-readable copies: [`docs/AGENT_SETUP.md`](docs/AGENT_SETUP.md), [`AGENTS.md`](AGENTS.md), [`llms.txt`](llms.txt).
+
+---
+
+## How it works
+
+The scan is **PR-aware**: it reports documentation references invalidated by
+*this* `base..head` diff. A leftover command that was already stale before the
+change is not reported. That keeps the signal focused on the review at hand.
+
+### Rules
+
+| Rule | Confirmed | Needs-review |
+| --- | --- | --- |
+| `scripts.missing` | Documented `npm`/`pnpm`/`yarn`/`bun` script invocations removed or renamed in `package.json` | — |
+| `links.broken` | Markdown / image links to files deleted or renamed in the diff | Inline `` `path/like` `` heuristics |
+| `env.stale` | Code-block / inline-code env keys removed from `.env.example` (and similar) | Bare keys in Markdown table cells |
+
+Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`.
+
+**confirmed** findings fail CI by default (`--fail-on confirmed`). **needs-review** findings are advisory and do not fail that threshold.
+
+Default scan is offline: no signup, no API keys. The GitHub Action may call the
+GitHub API only to create/update the sticky PR comment. The tool never executes
+commands found in documentation.
 
 ### Options
 
@@ -78,10 +184,10 @@ repository.
 | `--head <ref>` | `HEAD` | Head Git ref |
 | `--format <text\|json\|sarif>` | `text` | Output format |
 | `--fail-on <confirmed\|none>` | `confirmed` | CI threshold |
-| `--rank <none\|jev>` | `none` | Optional semantic ranking (see below) |
+| `--rank <none\|jev>` | `none` | Optional semantic ranking (**since 0.3.0** / current `main`; not in npm `0.2.1`) |
 | `--cwd <path>` | current directory | Repository to scan |
 
-`DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted.
+`DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted (**since 0.3.0**).
 
 ### Exit codes
 
@@ -91,76 +197,20 @@ repository.
 | 1 | At least one finding at the configured threshold |
 | 2 | Usage, configuration, or execution error (including an invalid Git ref) |
 
-Findings are always written to stdout. Errors go to stderr. The tool does
-**not** execute commands found in documentation.
+Findings go to stdout; errors to stderr.
 
-## Initial scope
+### Rule limitations
 
-Implemented now:
+**`links.broken`** does not report pre-existing broken links, external URLs
+(`http://`, `https://`, `mailto:`, …), or missing in-file anchors (file existence
+only). Renames detected by Git include the new path as a suggested fix.
 
-- PR-aware scans based on a Git range (`--base` / `--head`)
-- **`scripts.missing`**: Detect documented `npm run`, `pnpm run` / `pnpm`,
-  `yarn run` / `yarn`, and `bun run` invocations of scripts removed or renamed
-  in `package.json`
-- **`links.broken`**: Detect local Markdown links and file paths pointing to
-  files deleted or renamed in the diff (see [Limitations](#links-broken-limitations))
-- **`env.stale`**: Detect environment variables removed from `.env.example`,
-  `.env.sample`, `.env.template` and similar committed example files that are
-  still documented (see [Limitations](#env-stale-limitations))
-- Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`,
-  `CONTRIBUTING.md`
-- Text, versioned JSON, and SARIF output with CI-friendly exit codes
-- GitHub Action (sticky PR comment + job summary; optional SARIF)
-- Read-only MCP server (`doc-lag mcp`) for coding agents
-- Offline-by-default scan (no signup, no API keys; Action may call the GitHub
-  API only to create/update the sticky comment)
-- Optional semantic ranking with Jev (`--rank jev`) — ordering only; see below
+**`env.stale`** only reads committed example files (`.env.example`, `.env.sample`,
+`.env.template`, and similar) via Git at the given refs — never real `.env`
+files. Freeform prose without an extractable key is ignored. A 1:1 remove/add
+in the same example file yields a rename hint.
 
-Planned, not implemented yet:
-
-- GitHub Pages only after initial developer adoption
-
-### links.broken limitations
-
-The `links.broken` rule detects broken local links **caused by the diff**. It
-does not report:
-
-- Pre-existing broken links that were already invalid at the base ref
-- External URLs (http://, https://, mailto:, etc.) — these are ignored entirely
-- Broken anchor targets within files (only file existence is checked)
-
-Confidence levels:
-
-- **confirmed**: Standard Markdown links (`[text](path)`) and image links
-  (`![alt](path)`) to files deleted or renamed in the diff
-- **needs-review**: Inline code paths (`` `src/foo.ts` ``) that look like repo
-  paths — these are heuristic matches and do not fail CI by default
-
-When git detects a rename, the finding includes the new path as a suggested fix.
-
-### env.stale limitations
-
-The `env.stale` rule detects documentation that still references environment
-variables **removed or renamed in the diff** from committed example files
-(`.env.example`, `.env.sample`, `.env.template`, and similar). It does not
-report:
-
-- Pre-existing stale references that were already invalid at the base ref
-- Real `.env` files that may contain secrets — only committed example files
-  are read, and only via git at the given refs
-- Freeform prose that mentions a concept without an extractable env key
-
-Confidence levels:
-
-- **confirmed**: Assignments in code blocks (`FOO_BAR=...`) and inline code
-  mentions (`` `FOO_BAR` `` / `` `FOO_BAR=...` ``) matching a removed key
-- **needs-review**: Bare keys in Markdown table cells — heuristic matches that
-  do not fail CI by default (`--fail-on confirmed`)
-
-When a single key is removed and a single key is added in the same example
-file, the finding includes a rename hint.
-
-## What this will *not* do
+### What this will *not* do
 
 - Automatically rewrite docs
 - Decide whether freeform prose is semantically correct
@@ -168,16 +218,32 @@ file, the finding includes a rename hint.
 - Require MCP, Jev, or another external model (default remains local)
 - Execute, install, or evaluate commands mentioned in the scanned repository
 
-## Optional: semantic ranking with Jev
+---
 
-By default doc-lag is offline. You can optionally reorder `needs-review` /
-`unknown` findings with **[Jev](https://docs.typesafe.ai)** (TypeSafe AI’s
-non-generative System One model). Ranking never changes a finding’s `status`
-and never upgrades anything to `confirmed` — it only changes review order and
-attaches score/confidence as extra evidence.
+## Optional: Jev ranking *(since 0.3.0)*
 
-Evaluated on **43 public PRs from 13 open-source projects** (not an endorsement
-of those projects, TypeSafe, or Jev):
+> **Availability:** `--rank jev`, Action `rank: jev`, and MCP `rank: "jev"` are on
+> `main` and will ship in **npm 0.3.0**. npm **0.2.1** and Action tag **`@v0`**
+> (currently pointing at 0.2.1) do not include ranking yet — use a `main` checkout
+> / `uses: TarcisioPhilips/doc-lag@main` until 0.3.0 is released.
+
+By default doc-lag stays offline. When a PR produces many **needs-review**
+findings, optional **[Jev](https://docs.typesafe.ai)** ranking (TypeSafe AI’s
+non-generative System One model) puts the ones that matter first and sinks likely
+false alarms. Ranking **never** changes a finding’s `status` and never upgrades
+anything to `confirmed` — order and evidence only.
+
+**When to enable:** large PRs with a noisy needs-review list (especially
+`env.stale` table cells or heuristic path mentions). Skip it for small PRs or when
+you want a fully offline CI job.
+
+**Example:** three `env.stale` needs-review hits after removing billing/SMTP keys.
+Without ranking, a glossary table that merely mentions `LEGACY_TOKEN` sits mixed
+in with real config docs. With `--rank jev`, billing/SMTP docs surface first
+(~0.96 / ~0.91 confidence) and the glossary mention drops last (~0.22).
+
+**Benchmark** (43 public PRs from 13 open-source projects; evaluation only — not
+an endorsement of those projects, TypeSafe, or Jev):
 
 | Ranker | nDCG@3 | P@2 |
 | --- | ---: | ---: |
@@ -185,108 +251,30 @@ of those projects, TypeSafe, or Jev):
 | Path overlap | 0.73 | 0.88 |
 | BM25 | 0.62 | 0.72 |
 
-Rough cost/latency on that set: ~US$0.007 total and ~0.4s per case.
+Rough cost on that set: ~US$0.007 total and ~0.4s per case.
+
+**Privacy:** when ranking is enabled, PR diff summaries and documentation excerpts
+are sent to `https://api.typesafe.ai`. The key is read only from
+`TYPESAFE_API_KEY` and is never logged. Missing key → clear error (exit 2).
+Timeouts, 4xx/5xx, and rate limits fall back to deterministic order with a warning.
+
+### Setup (CLI / Action / MCP)
 
 ```bash
 export TYPESAFE_API_KEY="your-key"   # https://console.typesafe.ai
+# needs doc-lag >= 0.3.0 (or current main):
 doc-lag scan --base main --head HEAD --rank jev
 ```
 
-**Privacy:** when ranking is enabled, PR diff summaries and documentation
-excerpts are sent to `https://api.typesafe.ai`. The key is read only from
-`TYPESAFE_API_KEY` and is never logged. Missing key → clear error (exit 2).
-Timeouts, 4xx/5xx, and rate limits fall back to deterministic order with a
-warning. Token usage and estimated cost are reported when ranking applies
-(candidate and text size caps keep requests bounded).
-
-## MCP server (coding agents)
-
-doc-lag exposes a **read-only** MCP server over stdio so agents (Cursor, Claude
-Code, Codex, VS Code) can ask which docs a change made stale — before opening a
-PR or after editing code (including uncommitted working-tree changes).
-
-```bash
-npm run build
-node dist/cli.js mcp
-# or during development:
-npm run mcp
+```yaml
+# Action: pin @main until 0.3.0 / a tag that includes ranking
+- uses: TarcisioPhilips/doc-lag@main
+  with:
+    fail-on: confirmed
+    rank: jev
+  env:
+    TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 ```
-
-Tools (all annotated read-only; paths constrained to the workspace):
-
-| Tool | Purpose |
-| --- | --- |
-| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` to include uncommitted edits. Optional `rank: "jev"` (requires `TYPESAFE_API_KEY`). |
-| `explain_finding` | Re-scan and return one finding by stable id with full evidence. |
-| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
-
-### Cursor
-
-Create `.cursor/mcp.json` in the project (or user MCP config):
-
-```json
-{
-  "mcpServers": {
-    "doc-lag": {
-      "command": "npx",
-      "args": ["-y", "doc-lag", "mcp"],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-Until the package is published to npm, point at this checkout instead:
-
-```json
-{
-  "mcpServers": {
-    "doc-lag": {
-      "command": "node",
-      "args": ["/absolute/path/to/doc-lag/dist/cli.js", "mcp"],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-### Claude Code
-
-```bash
-claude mcp add doc-lag -- npx -y doc-lag mcp
-# local checkout:
-claude mcp add doc-lag -- node /absolute/path/to/doc-lag/dist/cli.js mcp
-```
-
-### VS Code
-
-Add to `.vscode/mcp.json` (or user MCP settings):
-
-```json
-{
-  "servers": {
-    "doc-lag": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "doc-lag", "mcp"],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-### Example tool call
-
-```json
-{
-  "name": "scan_diff",
-  "arguments": {
-    "include_working_tree": true
-  }
-}
-```
-
-Optional ranking (sends diff + doc excerpts to TypeSafe AI):
 
 ```json
 {
@@ -299,162 +287,93 @@ Optional ranking (sends diff + doc excerpts to TypeSafe AI):
 }
 ```
 
-Example response (shape abbreviated):
+---
 
-```json
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "doc-lag scan abc1234..WORKING_TREE: 1 finding(s) (1 confirmed, 0 needs-review, 0 unknown).\n- [confirmed] scripts.missing:README.md:1:deploy:preview — `npm run deploy:preview` is documented but no longer exists in package.json scripts."
-    }
-  ],
-  "structuredContent": {
-    "schemaVersion": "1.0",
-    "tool": "doc-lag",
-    "mode": "diff",
-    "base": "abc1234…",
-    "head": "WORKING_TREE",
-    "findings": [
-      {
-        "id": "scripts.missing:README.md:1:deploy:preview",
-        "ruleId": "scripts.missing",
-        "status": "confirmed",
-        "message": "`npm run deploy:preview` is documented but no longer exists in package.json scripts.",
-        "documentation": { "path": "README.md", "line": 1 },
-        "evidence": [{ "path": "package.json", "pointer": "/scripts/deploy:preview" }],
-        "suggestion": "Update the documented command or restore the script"
-      }
-    ],
-    "summary": { "confirmed": 1, "needsReview": 0, "unknown": 0 }
-  }
-}
-```
+## GitHub Action details
 
-## GitHub Action
+On `pull_request`, the Action scans `base.sha..head.sha`, writes a job summary,
+and posts or updates a single sticky PR comment. Fork PRs without comment
+permission still get the job summary; the step does not fail for that reason.
 
-Use doc-lag on `pull_request` to scan `base.sha..head.sha`, write a job
-summary, and post or update a single sticky PR comment. Fork PRs without
-comment permission still get the job summary; the step does not fail for that
-reason.
-
-```yaml
-name: doc-lag
-
-on:
-  pull_request:
-
-permissions:
-  contents: read
-  pull-requests: write
-  # Optional, only if you upload SARIF:
-  # security-events: write
-
-jobs:
-  doc-lag:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: doc-lag
-        id: doc-lag
-        uses: TarcisioPhilips/doc-lag@v0   # or pin a commit SHA / @main
-        with:
-          fail-on: confirmed            # confirmed | none (default: confirmed)
-          comment: true                 # sticky PR comment (default: true)
-          working-directory: .          # optional subdirectory
-          sarif: false                  # optional SARIF file for code scanning
-          rank: none                    # none | jev (default: none)
-
-      # Optional: surface findings in GitHub code scanning
-      # - if: steps.doc-lag.outputs.sarif-path != ''
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     sarif_file: ${{ steps.doc-lag.outputs.sarif-path }}
-      #     category: doc-lag
-```
-
-Optional Jev ranking (secret + input):
-
-```yaml
-      - name: doc-lag
-        uses: TarcisioPhilips/doc-lag@v0
-        with:
-          fail-on: confirmed
-          rank: jev
-        env:
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-```
-
-**Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, `rank`, optional
-`base` / `head` overrides.  
+**Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, `rank` (**since 0.3.0**),
+optional `base` / `head` overrides.  
 **Outputs:** `findings-count`, `confirmed-count`, `needs-review-count`,
 `report-path`, `sarif-path`.
 
-**Zero findings:** when `comment: true`, the Action still creates or updates
-the sticky PR comment (and always writes the job summary), with an explicit
-“No documentation drift findings for this range.” message. That makes it
-obvious the scan ran. Set `comment: false` to suppress the PR comment and
-rely on the job summary / outputs only. Re-runs upsert the same sticky
-comment (matched by `<!-- doc-lag-sticky -->`) instead of posting duplicates.
+With `comment: true` (default), zero findings still upsert the sticky comment
+(“No documentation drift findings…”) so it is obvious the scan ran. Re-runs
+match `<!-- doc-lag-sticky -->` instead of posting duplicates.
 
 The Action is a **composite action that installs and builds from source** in
-`${{ github.action_path }}` (locked by `package-lock.json`). That avoids
-committing a bundled `dist/` for the Action while keeping external consumers
-correct when they pin a tag or SHA. The scan itself stays read-only and does
-not execute commands found in documentation.
+`${{ github.action_path }}` (locked by `package-lock.json`). Pin a tag or SHA for
+reproducibility.
 
-### Example sticky comment
+Optional SARIF upload:
 
-```markdown
-<!-- doc-lag-sticky -->
-## doc-lag report
+```yaml
+      - name: doc-lag
+        id: doc-lag
+        uses: TarcisioPhilips/doc-lag@v0
+        with:
+          sarif: true
 
-Scanned `aaa111..bbb222` — **1** confirmed, **1** needs-review.
-
-### Confirmed
-
-#### `README.md:1` — `scripts.missing` (CONFIRMED)
-
-`npm run deploy:preview` is documented but no longer exists in package.json scripts.
-
-- Evidence: `package.json#scripts` (`deploy:preview`: base present, head absent)
-- Suggested fix: Update the documented command or restore the script
-
-### Needs review
-
-#### `docs/guide.md:4` — `links.broken` (NEEDS-REVIEW)
-
-`src/old.ts` may reference a deleted path.
-
-- Evidence: `src/old.ts` (deleted in this diff)
-- Suggested fix: Confirm the inline path and update docs if needed.
+      - if: steps.doc-lag.outputs.sarif-path != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.doc-lag.outputs.sarif-path }}
+          category: doc-lag
 ```
+
+(`security-events: write` required for the upload step.)
+
+### MCP tools
+
+All tools are annotated read-only; paths are constrained to the workspace.
+
+| Tool | Purpose |
+| --- | --- |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` for uncommitted edits. Optional `rank: "jev"` (**since 0.3.0**). |
+| `explain_finding` | Re-scan and return one finding by stable id with full evidence. |
+| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
+
+---
+
+## Why this is different
+
+doc-lag focuses on **PR-specific change-to-document traceability** (this diff →
+these evidence-backed doc hits), not broad repository linting or age-based
+“docs older than code” heuristics. Competitive notes:
+[`docs/validation.md`](docs/validation.md), [`PROJECT_SPEC.md`](PROJECT_SPEC.md),
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Roadmap
 
-1. Local read-only deterministic CLI (scripts, links, and env rules).
-2. Tested GitHub Action + optional SARIF (this repository).
-3. Agent-facing MCP integration (this repository: `doc-lag mcp`).
-4. Optional semantic ranking with Jev (this repository: `--rank jev`).
+1. Local read-only deterministic CLI (scripts, links, and env rules) — shipped.
+2. GitHub Action + optional SARIF — shipped.
+3. Agent-facing MCP (`doc-lag mcp` / `doc-lag-mcp`) — shipped on npm.
+4. Optional semantic ranking with Jev (`--rank jev`) — on `main`, npm **0.3.0** next.
 5. GitHub Pages only after initial developer adoption.
 
-## Differences from existing tools
+## Contributing / development
 
-The intended distinction is **PR-specific change-to-document traceability**
-rather than broad repository linting. That still needs to be demonstrated
-against tools such as `docsync`, `docs-drift`, and `doc-drift-guard`. See
-[`PROJECT_SPEC.md`](PROJECT_SPEC.md) and the architecture notes in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+From a clone (Node 20+):
 
-## Contributing
+```bash
+npm install
+npm test
+npm run build
 
-This is a pre-release local preview. Fixtures used by the test suite are
-created in a temporary Git repository at runtime (`npm test`). Once the
-project is public, we will publish a contribution guide, labeled starter
-issues, and a license.
+# scan with the built CLI
+node dist/cli.js scan --base main --head HEAD
+
+# or without a build step
+npx tsx src/cli.ts scan --base main --head HEAD
+npm run scan -- --base main --head HEAD
+npm run mcp
+```
+
+Test fixtures are created in a temporary Git repository at runtime (`npm test`).
+Issues and PRs welcome.
 
 ## License
 

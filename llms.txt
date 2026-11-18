@@ -1,0 +1,33 @@
+# doc-lag
+
+> Detect documentation made stale by a code change. Local-first CLI, GitHub Action, and read-only MCP server. Evidence-backed findings for developers, CI, and coding agents.
+
+npm: https://www.npmjs.com/package/doc-lag
+GitHub: https://github.com/TarcisioPhilips/doc-lag
+License: MIT
+
+## Quick commands
+
+```bash
+npx doc-lag scan --base main
+npx -y doc-lag mcp
+npx -y doc-lag-mcp
+```
+
+## Agent setup (copy-paste for coding agents)
+
+Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md
+
+## Docs
+
+- [README](https://github.com/TarcisioPhilips/doc-lag/blob/main/README.md): human quickstart, Action, MCP, options, Jev notes
+- [docs/AGENT_SETUP.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md): step-by-step agent install (workflow + MCP configs)
+- [AGENTS.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/AGENTS.md): short agent orientation
+- [PROJECT_SPEC.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/PROJECT_SPEC.md): product/spec
+- [docs/ARCHITECTURE.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/ARCHITECTURE.md): internals
+- [docs/validation.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/validation.md): competitive validation notes
+
+## Versions
+
+- Published npm: 0.2.1 (CLI `scan` / `mcp`, Action `@v0`, no `--rank`)
+- Optional Jev ranking (`--rank jev`): on `main`, ships as 0.3.0 — enable only when the user asks; requires TYPESAFE_API_KEY
