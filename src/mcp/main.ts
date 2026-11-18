@@ -5,12 +5,10 @@
  * that want a direct executable.
  */
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "../is-entry.js";
 import { runMcpStdio } from "./stdio.js";
 
-const isEntry =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isEntry = isEntryPoint(process.argv[1], import.meta.url);
 
 if (isEntry) {
   const cwdFlag = process.argv.indexOf("--cwd");
