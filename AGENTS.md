@@ -12,7 +12,7 @@ One-liner the human can paste:
 Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md
 ```
 
-Consumer commands (npm package `doc-lag`, currently **0.2.1**):
+Consumer commands (npm package `doc-lag`, **0.3.0**):
 
 ```bash
 npx doc-lag scan --base main
@@ -21,7 +21,7 @@ npx -y doc-lag mcp
 npx -y -p doc-lag doc-lag-mcp
 ```
 
-Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (ranking ships in **0.3.0** / current `main`, not in 0.2.1).
+Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (requires `TYPESAFE_API_KEY`; sends diff/doc excerpts to a third party).
 
 ## If you are developing doc-lag itself
 

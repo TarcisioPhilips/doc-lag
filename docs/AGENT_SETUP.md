@@ -3,7 +3,7 @@
 Machine-friendly instructions for coding agents (Claude Code, Cursor, Codex, VS Code Copilot).
 Humans: see the [README quickstart](../README.md#quickstart-1-minute).
 
-**Package:** [`doc-lag`](https://www.npmjs.com/package/doc-lag) on npm (current published: **0.2.1**).  
+**Package:** [`doc-lag`](https://www.npmjs.com/package/doc-lag) on npm (**0.3.0**).  
 **Repo:** https://github.com/TarcisioPhilips/doc-lag  
 **Requires:** Node.js 20+, Git.
 
@@ -197,7 +197,7 @@ Or use MCP `scan_diff` with `include_working_tree: true` when the user has uncom
 ## CLI reference (consumer)
 
 ```bash
-npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--cwd <path>]
+npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--rank none|jev] [--cwd <path>]
 ```
 
 | Exit | Meaning |
@@ -206,7 +206,7 @@ npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-o
 | 1 | Finding(s) at the configured threshold |
 | 2 | Usage / config / execution error |
 
-**Published npm 0.2.1** does **not** include `--rank`. Ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is on repository `main` and will ship as **0.3.0**. Only enable it when the user asks **and** a version that supports it is available; it requires `TYPESAFE_API_KEY` and sends diff summaries + doc excerpts to `https://api.typesafe.ai`.
+Optional ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is available in **0.3.0+**. Only enable it when the user asks; it requires `TYPESAFE_API_KEY` and sends diff summaries + doc excerpts to `https://api.typesafe.ai`. Prefer `npx doc-lag` and Action `uses: TarcisioPhilips/doc-lag@v0`.
 
 ---
 

@@ -186,7 +186,7 @@ commands found in documentation.
 | `--head <ref>` | `HEAD` | Head Git ref |
 | `--format <text\|json\|sarif>` | `text` | Output format |
 | `--fail-on <confirmed\|none>` | `confirmed` | CI threshold |
-| `--rank <none\|jev>` | `none` | Optional semantic ranking (**since 0.3.0** / current `main`; not in npm `0.2.1`) |
+| `--rank <none\|jev>` | `none` | Optional semantic ranking (**since 0.3.0**) |
 | `--cwd <path>` | current directory | Repository to scan |
 
 `DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted (**since 0.3.0**).
@@ -224,11 +224,6 @@ in the same example file yields a rename hint.
 
 ## Optional: Jev ranking *(since 0.3.0)*
 
-> **Availability:** `--rank jev`, Action `rank: jev`, and MCP `rank: "jev"` are on
-> `main` and will ship in **npm 0.3.0**. npm **0.2.1** and Action tag **`@v0`**
-> (currently pointing at 0.2.1) do not include ranking yet — use a `main` checkout
-> / `uses: TarcisioPhilips/doc-lag@main` until 0.3.0 is released.
-
 By default doc-lag stays offline. When a PR produces many **needs-review**
 findings, optional **[Jev](https://docs.typesafe.ai)** ranking (TypeSafe AI’s
 non-generative System One model) puts the ones that matter first and sinks likely
@@ -264,13 +259,11 @@ Timeouts, 4xx/5xx, and rate limits fall back to deterministic order with a warni
 
 ```bash
 export TYPESAFE_API_KEY="your-key"   # https://console.typesafe.ai
-# needs doc-lag >= 0.3.0 (or current main):
-doc-lag scan --base main --head HEAD --rank jev
+npx doc-lag scan --base main --head HEAD --rank jev
 ```
 
 ```yaml
-# Action: pin @main until 0.3.0 / a tag that includes ranking
-- uses: TarcisioPhilips/doc-lag@main
+- uses: TarcisioPhilips/doc-lag@v0
   with:
     fail-on: confirmed
     rank: jev
@@ -353,7 +346,7 @@ these evidence-backed doc hits), not broad repository linting or age-based
 1. Local read-only deterministic CLI (scripts, links, and env rules) — shipped.
 2. GitHub Action + optional SARIF — shipped.
 3. Agent-facing MCP (`doc-lag mcp`; bin `doc-lag-mcp` inside the `doc-lag` package) — shipped on npm.
-4. Optional semantic ranking with Jev (`--rank jev`) — on `main`, npm **0.3.0** next.
+4. Optional semantic ranking with Jev (`--rank jev`) — shipped in **0.3.0**.
 5. GitHub Pages only after initial developer adoption.
 
 ## Contributing / development
