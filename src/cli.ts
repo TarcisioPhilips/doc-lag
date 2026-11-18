@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./is-entry.js";
 import { Command, Option } from "commander";
 import { scan } from "./core/scan.js";
 import { ScanError } from "./errors.js";
@@ -153,9 +153,7 @@ function isCommanderError(error: unknown): error is { code: string; message: str
   );
 }
 
-const isEntry =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isEntry = isEntryPoint(process.argv[1], import.meta.url);
 
 if (isEntry) {
   void runCli(process.argv);
