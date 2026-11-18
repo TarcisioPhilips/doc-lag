@@ -61,8 +61,12 @@ describe("MCP server in-process round trip", () => {
       expect(names).toEqual(["explain_finding", "list_rules", "scan_diff"]);
       for (const tool of tools.tools) {
         expect(tool.annotations?.readOnlyHint).toBe(true);
-        expect(tool.annotations?.openWorldHint).toBe(false);
       }
+      const byName = Object.fromEntries(tools.tools.map((tool) => [tool.name, tool]));
+      // scan_diff may call TypeSafe AI when rank=jev; other tools stay offline.
+      expect(byName.scan_diff?.annotations?.openWorldHint).toBe(true);
+      expect(byName.explain_finding?.annotations?.openWorldHint).toBe(false);
+      expect(byName.list_rules?.annotations?.openWorldHint).toBe(false);
     });
   });
 

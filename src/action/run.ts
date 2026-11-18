@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { scan } from "../core/scan.js";
+import { scanWithRanking } from "../core/scan-with-ranking.js";
 import { ScanError } from "../errors.js";
+import type { FetchLike } from "../ranking/jev-client.js";
 import { exitCodeFor } from "../reporters/exit-code.js";
 import { formatJson } from "../reporters/json.js";
 import { formatSarif } from "../reporters/sarif.js";
@@ -28,6 +29,7 @@ export interface ActionRuntimeEnv {
   writeOutputFile?: (filePath: string, contents: string) => void;
   log?: (message: string) => void;
   warn?: (message: string) => void;
+  fetchImpl?: FetchLike;
 }
 
 export interface ActionRunResult {
@@ -71,10 +73,14 @@ export async function runAction(runtime: ActionRuntimeEnv = {}): Promise<ActionR
 
   let report: ScanReport;
   try {
-    report = scan({
+    report = await scanWithRanking({
       cwd: workingDirectory,
       base: range.base,
       head: range.head,
+      rank: inputs.rank,
+      env,
+      fetchImpl: runtime.fetchImpl,
+      warn,
     });
   } catch (error) {
     if (error instanceof ScanError) {

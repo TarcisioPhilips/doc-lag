@@ -12,7 +12,7 @@
     12|
     13|**Chosen wedge:** **PR-aware documentation impact** rather than another generic README linter. The CLI answers: **“Given this git diff, which documentation claims are now invalid or deserve review, and why?”**
     14|
-    15|**MVP:** completely local, deterministic rules, read-only, no LLM, no API key, no MCP requirement. Python and TypeScript/JavaScript repositories may be analyzed based on supported static manifests; no promise of complete language understanding. Later: probabilistic relevance ranking (evaluate Jev against simpler baselines), GitHub Action, MCP, GitHub Pages.
+    15|**MVP:** completely local, deterministic rules, read-only, no LLM, no API key, no MCP requirement. Python and TypeScript/JavaScript repositories may be analyzed based on supported static manifests; no promise of complete language understanding. Later items delivered or in progress: optional Jev semantic ranking (opt-in), GitHub Action, MCP; GitHub Pages still later.
     16|
     17|**Success criterion:** Demonstrate a differentiated, reproducible PR-related finding in real repositories versus existing tools; obtain evidence that developers want to use it again. Stars are a discovery signal, not proof of retention.
     18|
@@ -233,17 +233,23 @@
    233|
    234|**Trust boundaries:** treat repository content as untrusted data; never let comments, docs or agent instructions override scan rules; no code execution; isolate path resolution within workspace.
    235|
-   236|## 8. Jev integration — research, not MVP dependency
+   236|## 8. Jev integration — optional semantic ranking (shipped as opt-in)
    237|
    238|**Question:** Can a decision model rank *which paragraphs/docs deserve review* better than simple lexical ranking or graph adjacency?
    239|
-   240|- Inputs: code change summary, document chunk, extracted facts, supported evidence.
-   241|- Options: `relevant`, `uncertain`, `not_relevant`, or ranked candidates.
-   242|- Rules: model output never overrides deterministic `confirmed` findings; never auto-fixes; opt-in with explicit privacy disclosure and configurable data sent externally.
-   243|- Baselines: file path/name overlap; keyword/BM25; embeddings if justified; Jev; generic LLM.
-   244|- Evaluate: precision@k, recall@k, cost per reviewed relevant item, latency p50/p95, calibration (if supported), privacy trade-offs.
-   245|- **Go/no-go:** include Jev only if it materially improves a defined dataset over simpler alternatives; keep provider interchangeable.
-   246|
+   240|**Decision (go):** A private PoC (`jev-poc`) benchmarked Jev `score` ranking of doc paragraphs vs a PR diff on **43 public PRs from 13 open-source projects**: nDCG@3 Jev **0.86** vs path-overlap **0.73** vs BM25 **0.62**; P@2 **0.96** vs **0.88** vs **0.72**; ~US$0.007 total and ~0.4s per case. Inclusion in OSS projects is for evaluation only — not an endorsement.
+   241|
+   242|### Shipped behavior in doc-lag
+   243|
+   244|- **Strictly opt-in:** CLI `--rank jev` (or `DOC_LAG_RANK=jev`), Action input `rank: jev`, MCP `scan_diff.rank: "jev"`. Default remains offline, deterministic, and byte-identical (no network).
+   245|- **Ordering only:** Jev reorders `needs-review` / `unknown` findings for human review. It **never** changes `status` and never upgrades anything to `confirmed`.
+   246|- **API (verified live):** `POST https://api.typesafe.ai/v1/systemone`, `Authorization: Bearer $TYPESAFE_API_KEY`, body `{ model, state, questions }` with `questions` as an **object** keyed by id. Score question uses `instructions` + ordered named `criteria` situations (`not_relevant`, `marginally_relevant`, `highly_relevant`). State includes `pr_diff_summary` and `doc_excerpt`. Model pinned to `jev-1.14.0`. Cost from `usage.input_tokens` at $0.042/Mtok (output free).
+   247|- **Privacy:** When enabled, print a clear notice that diff summaries and doc excerpts go to a third-party API. Key only from `TYPESAFE_API_KEY`; never log/print Authorization headers (redaction).
+   248|- **Missing key:** clear error (exit 2) when Jev is requested without `TYPESAFE_API_KEY`.
+   249|- **Runtime failures:** timeouts, 4xx/5xx, and rate limits degrade gracefully to deterministic order with a warning and `report.ranking.warning`.
+   250|- **Bounds:** cap candidates scored per scan and truncate diff/doc text sizes; report token usage and estimated cost when applied.
+   251|- **Evidence:** score/confidence attached as extra finding evidence (`jev#relevance`) and optional `finding.ranking` / `report.ranking` fields (additive; `schemaVersion` stays `1.0`).
+   252|
    247|## 9. Milestones and implementation issues
    248|
    249|### Gate 0 — 1–2 days: validate differentiation and name
@@ -278,7 +284,7 @@
    278|### Later (not a launch blocker)
    279|
    280|- [ ] MCP read-only adapter.
-   281|- [ ] Jev experiment for relevance ranking.
+   281|- [x] Optional Jev semantic ranking (`--rank jev` / Action / MCP); ordering only.
    282|- [ ] GitHub Pages: benchmark/results, docs, playground only if it converts users to installation.
    283|
    284|## 10. Acceptance scenarios

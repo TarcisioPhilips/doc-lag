@@ -13,6 +13,14 @@ const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
+  // Default scan is offline; optional rank=jev calls TypeSafe AI.
+  openWorldHint: true,
+} as const;
+
+const LOCAL_ONLY_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
   openWorldHint: false,
 } as const;
 
@@ -42,6 +50,12 @@ const scanDiffInputSchema = {
     .optional()
     .describe(
       "Repository path relative to the MCP workspace root (default: \".\"). Must stay inside the workspace; path traversal is rejected.",
+    ),
+  rank: z
+    .enum(["none", "jev"])
+    .optional()
+    .describe(
+      'Optional semantic ranking. Default "none" is offline and deterministic. "jev" reorders needs-review/unknown findings via TypeSafe AI (requires TYPESAFE_API_KEY); sends diff summaries and doc excerpts to a third party; never changes finding status.',
     ),
 };
 
@@ -101,12 +115,14 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
       title: "Scan documentation drift",
       description:
         "Scan a git range for documentation made stale by the change (scripts.missing, links.broken, env.stale). " +
-        "Read-only and local: never executes commands from docs and does not use the network. " +
+        "Read-only: never executes commands from docs and never writes to the repo. " +
+        "Default is offline and deterministic. Optional rank=jev reorders needs-review findings via TypeSafe AI " +
+        "(requires TYPESAFE_API_KEY; privacy: diff + doc text leave the machine). " +
         "Defaults base to merge-base with main and head to HEAD; set include_working_tree to include uncommitted edits.",
       inputSchema: scanDiffInputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    async (args) => toCallToolResult(handleScanDiff(ctx, args)),
+    async (args) => toCallToolResult(await handleScanDiff(ctx, args)),
   );
 
   server.registerTool(
@@ -114,9 +130,9 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
     {
       title: "Explain a finding",
       description:
-        "Re-scan the same range and return one finding by stable id with full evidence and suggested action. Read-only.",
+        "Re-scan the same range and return one finding by stable id with full evidence and suggested action. Read-only and offline.",
       inputSchema: explainFindingInputSchema,
-      annotations: READ_ONLY_ANNOTATIONS,
+      annotations: LOCAL_ONLY_ANNOTATIONS,
     },
     async (args) => toCallToolResult(handleExplainFinding(ctx, args)),
   );
@@ -128,7 +144,7 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
       description:
         "List deterministic documentation-drift rules available in the scan pipeline.",
       inputSchema: {},
-      annotations: READ_ONLY_ANNOTATIONS,
+      annotations: LOCAL_ONLY_ANNOTATIONS,
     },
     async () => toCallToolResult(handleListRules()),
   );

@@ -44,6 +44,7 @@ describe("action inputs and outputs", () => {
       comment: true,
       workingDirectory: ".",
       sarif: false,
+      rank: "none",
       base: undefined,
       head: undefined,
     });
@@ -53,6 +54,7 @@ describe("action inputs and outputs", () => {
         DOC_LAG_COMMENT: "false",
         DOC_LAG_WORKING_DIRECTORY: "packages/app",
         DOC_LAG_SARIF: "true",
+        DOC_LAG_RANK: "jev",
         DOC_LAG_BASE: "abc",
         DOC_LAG_HEAD: "def",
       }),
@@ -61,6 +63,7 @@ describe("action inputs and outputs", () => {
       comment: false,
       workingDirectory: "packages/app",
       sarif: true,
+      rank: "jev",
       base: "abc",
       head: "def",
     });

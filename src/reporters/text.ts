@@ -8,6 +8,16 @@ function formatEvidence(item: EvidenceItem): string[] {
     const newPath = item.pointer.slice("renamed → ".length);
     return [`Evidence: ${item.path}`, `  renamed → ${newPath}`];
   }
+  if (item.path === "jev" && item.pointer === "/relevance") {
+    const head = item.head as { score?: number; confidence?: number } | undefined;
+    if (head && typeof head.score === "number") {
+      return [
+        `Evidence: jev#relevance`,
+        `  score=${head.score.toFixed(2)} confidence=${Number(head.confidence ?? 0).toFixed(2)}`,
+      ];
+    }
+    return [`Evidence: jev#relevance`];
+  }
 
   const lines = [`Evidence: ${item.path}${pointerToHash(item.pointer)}`];
   const factName = factNameFromPointer(item.pointer);
@@ -57,7 +67,7 @@ export function formatText(report: ScanReport): string {
   const noun = count === 1 ? "finding" : "findings";
   const header = `doc-lag  ${count} ${noun}  (${report.base}..${report.head})`;
   if (count === 0) {
-    return `${header}\n`;
+    return `${header}${formatRankingFooter(report)}\n`;
   }
   const blocks = report.findings.map((finding) => {
     const status = finding.status.toUpperCase();
@@ -69,5 +79,25 @@ export function formatText(report: ScanReport): string {
       `Suggested action: ${finding.suggestion}`,
     ]);
   });
-  return `${header}\n\n${blocks.join("\n\n")}\n`;
+  const rankingFooter = formatRankingFooter(report);
+  return `${header}\n\n${blocks.join("\n\n")}${rankingFooter}\n`;
+}
+
+function formatRankingFooter(report: ScanReport): string {
+  const ranking = report.ranking;
+  if (!ranking) {
+    return "";
+  }
+  const parts = [
+    `Ranking: ${ranking.provider} (${ranking.model})`,
+    ranking.applied ? "applied" : "not applied",
+    `scored=${ranking.candidatesScored}`,
+    `skipped=${ranking.candidatesSkipped}`,
+    `input_tokens=${ranking.inputTokens}`,
+    `estimated_cost_usd=${ranking.estimatedCostUsd.toFixed(6)}`,
+  ];
+  if (ranking.warning) {
+    parts.push(`warning=${ranking.warning}`);
+  }
+  return `\n\n${parts.join(" · ")}`;
 }

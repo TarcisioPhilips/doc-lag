@@ -139,7 +139,48 @@ describe("CLI", () => {
     expect(result.status).toBe(2);
   });
 
-  it("runScanCommand returns the same exit contract as the CLI", () => {
+  it("exits 2 when --rank jev is set without TYPESAFE_API_KEY", () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "package.json": packageJson({ build: "tsc" }),
+          "src/old.ts": "export {};\n",
+          "docs/guide.md": "See `src/old.ts`.\n",
+        },
+        headFiles: {
+          "src/old.ts": null,
+        },
+      }),
+    );
+    const previous = process.env.TYPESAFE_API_KEY;
+    delete process.env.TYPESAFE_API_KEY;
+    delete process.env.DOC_LAG_RANK;
+    try {
+      const result = runCli([
+        "scan",
+        "--base",
+        fixture.base,
+        "--head",
+        fixture.head,
+        "--cwd",
+        fixture.repo,
+        "--rank",
+        "jev",
+      ]);
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("TYPESAFE_API_KEY");
+      expect(result.stderr).toContain("Privacy notice");
+      expect(result.stderr).not.toMatch(/Authorization:\s*Bearer\s+(?!\[REDACTED\])/);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TYPESAFE_API_KEY;
+      } else {
+        process.env.TYPESAFE_API_KEY = previous;
+      }
+    }
+  });
+
+  it("runScanCommand returns the same exit contract as the CLI", async () => {
     const fixture = track(
       createFixtureRepo({
         baseFiles: {
@@ -151,7 +192,7 @@ describe("CLI", () => {
         },
       }),
     );
-    const confirmed = runScanCommand({
+    const confirmed = await runScanCommand({
       base: fixture.base,
       head: fixture.head,
       format: "text",
@@ -159,7 +200,7 @@ describe("CLI", () => {
       cwd: fixture.repo,
     });
     expect(confirmed.exitCode).toBe(1);
-    const ignored = runScanCommand({
+    const ignored = await runScanCommand({
       base: fixture.base,
       head: fixture.head,
       format: "json",

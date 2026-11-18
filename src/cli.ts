@@ -3,18 +3,27 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { isEntryPoint } from "./is-entry.js";
 import { Command, Option } from "commander";
-import { scan } from "./core/scan.js";
+import { scanWithRanking } from "./core/scan-with-ranking.js";
 import { ScanError } from "./errors.js";
+import { parseRankProvider } from "./ranking/jev-rank.js";
 import { exitCodeFor } from "./reporters/exit-code.js";
 import { formatJson } from "./reporters/json.js";
 import { formatSarif } from "./reporters/sarif.js";
 import { formatText } from "./reporters/text.js";
-import type { FailOn, OutputFormat } from "./types.js";
+import type { FailOn, OutputFormat, RankProvider } from "./types.js";
 
 function packageVersion(): string {
   const packageJsonUrl = new URL("../package.json", import.meta.url);
   const raw = readFileSync(packageJsonUrl, "utf8");
   return (JSON.parse(raw) as { version: string }).version;
+}
+
+function resolveRankOption(cliRank: string | undefined, env: NodeJS.ProcessEnv): RankProvider {
+  // CLI flag wins; otherwise DOC_LAG_RANK acts as config.
+  if (cliRank !== undefined) {
+    return parseRankProvider(cliRank);
+  }
+  return parseRankProvider(env.DOC_LAG_RANK);
 }
 
 export interface CliScanOptions {
@@ -23,13 +32,19 @@ export interface CliScanOptions {
   format: OutputFormat;
   failOn: FailOn;
   cwd: string;
+  rank?: RankProvider;
+  env?: NodeJS.ProcessEnv;
 }
 
-export function runScanCommand(options: CliScanOptions): { output: string; exitCode: number } {
-  const report = scan({
+export async function runScanCommand(
+  options: CliScanOptions,
+): Promise<{ output: string; exitCode: number }> {
+  const report = await scanWithRanking({
     cwd: path.resolve(options.cwd),
     base: options.base,
     head: options.head,
+    rank: options.rank ?? "none",
+    env: options.env,
   });
   const output =
     options.format === "json"
@@ -66,6 +81,15 @@ export function createProgram(): Command {
         .choices(["confirmed", "none"])
         .default("confirmed"),
     )
+    .addOption(
+      new Option(
+        "--rank <provider>",
+        "Optional semantic ranking of needs-review findings (default: none / offline). " +
+          "jev requires TYPESAFE_API_KEY and sends diff + doc excerpts to TypeSafe AI.",
+      )
+        .choices(["none", "jev"])
+        .default(undefined),
+    )
     .option("--cwd <path>", "Repository path (defaults to the current directory)")
     .addHelpText(
       "after",
@@ -78,19 +102,34 @@ Exit codes:
 Examples:
   doc-lag scan --base main --head HEAD
   doc-lag scan --base origin/main --head HEAD --format json --fail-on confirmed
+  doc-lag scan --base main --head HEAD --rank jev   # requires TYPESAFE_API_KEY
+
+Config:
+  DOC_LAG_RANK=jev   same as --rank jev when the flag is omitted
 `,
     )
-    .action((opts: { base: string; head: string; format: OutputFormat; failOn: FailOn; cwd?: string }) => {
-      const result = runScanCommand({
-        base: opts.base,
-        head: opts.head,
-        format: opts.format,
-        failOn: opts.failOn,
-        cwd: opts.cwd ?? process.cwd(),
-      });
-      process.stdout.write(result.output);
-      process.exitCode = result.exitCode;
-    });
+    .action(
+      async (opts: {
+        base: string;
+        head: string;
+        format: OutputFormat;
+        failOn: FailOn;
+        rank?: string;
+        cwd?: string;
+      }) => {
+        const result = await runScanCommand({
+          base: opts.base,
+          head: opts.head,
+          format: opts.format,
+          failOn: opts.failOn,
+          cwd: opts.cwd ?? process.cwd(),
+          rank: resolveRankOption(opts.rank, process.env),
+          env: process.env,
+        });
+        process.stdout.write(result.output);
+        process.exitCode = result.exitCode;
+      },
+    );
 
   program
     .command("mcp")

@@ -38,6 +38,11 @@ function formatFindingMarkdown(finding: Finding): string {
     finding.message,
     "",
     ...finding.evidence.flatMap(formatEvidenceMarkdown),
+    ...(finding.ranking
+      ? [
+          `- Jev relevance: score=${finding.ranking.score.toFixed(2)}, confidence=${finding.ranking.confidence.toFixed(2)} (ordering only; does not change status)`,
+        ]
+      : []),
     `- Suggested fix: ${finding.suggestion}`,
   ];
   return lines.join("\n");
@@ -75,6 +80,23 @@ export function formatCommentBody(report: ScanReport): string {
     lines.push(...section("Confirmed", confirmed));
     lines.push(...section("Needs review", needsReview));
     lines.push(...section("Unknown", unknown));
+  }
+
+  if (report.ranking) {
+    const r = report.ranking;
+    lines.push("### Semantic ranking (Jev)", "");
+    lines.push(
+      r.applied
+        ? `Reordered ${r.candidatesScored} needs-review/unknown candidate(s) with \`${r.model}\` ` +
+            `(input_tokens=${r.inputTokens}, estimated_cost_usd=${r.estimatedCostUsd.toFixed(6)}). ` +
+            `Statuses are unchanged — ranking is review order only.`
+        : `Jev ranking was requested but not applied` +
+            (r.warning ? ` (${r.warning})` : "") +
+            `. Findings stay in deterministic order.`,
+    );
+    lines.push("");
+    lines.push(`_${r.privacyNotice}_`);
+    lines.push("");
   }
 
   lines.push("---");
