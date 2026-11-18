@@ -71,12 +71,14 @@ jobs:
 
 ### MCP (coding agents)
 
-Published on npm as both `doc-lag mcp` and the `doc-lag-mcp` bin:
+Prefer the subcommand (there is no separate `doc-lag-mcp` package on npm):
 
 ```bash
 npx -y doc-lag mcp
-# equivalent:
-npx -y doc-lag-mcp
+# same bin, via the doc-lag package:
+npx -y -p doc-lag doc-lag-mcp
+# or after: npm install -g doc-lag
+doc-lag-mcp
 ```
 
 **Cursor** — `.cursor/mcp.json`:
@@ -350,7 +352,7 @@ these evidence-backed doc hits), not broad repository linting or age-based
 
 1. Local read-only deterministic CLI (scripts, links, and env rules) — shipped.
 2. GitHub Action + optional SARIF — shipped.
-3. Agent-facing MCP (`doc-lag mcp` / `doc-lag-mcp`) — shipped on npm.
+3. Agent-facing MCP (`doc-lag mcp`; bin `doc-lag-mcp` inside the `doc-lag` package) — shipped on npm.
 4. Optional semantic ranking with Jev (`--rank jev`) — on `main`, npm **0.3.0** next.
 5. GitHub Pages only after initial developer adoption.
 

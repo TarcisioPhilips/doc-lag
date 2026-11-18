@@ -16,7 +16,9 @@ Consumer commands (npm package `doc-lag`, currently **0.2.1**):
 
 ```bash
 npx doc-lag scan --base main
-npx -y doc-lag mcp          # or: npx -y doc-lag-mcp
+npx -y doc-lag mcp
+# bin inside package doc-lag (not a separate npm package):
+npx -y -p doc-lag doc-lag-mcp
 ```
 
 Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (ranking ships in **0.3.0** / current `main`, not in 0.2.1).

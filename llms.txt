@@ -11,7 +11,7 @@ License: MIT
 ```bash
 npx doc-lag scan --base main
 npx -y doc-lag mcp
-npx -y doc-lag-mcp
+npx -y -p doc-lag doc-lag-mcp
 ```
 
 ## Agent setup (copy-paste for coding agents)

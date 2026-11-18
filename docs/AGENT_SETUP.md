@@ -79,15 +79,17 @@ Optional later: `sarif: true` plus `github/codeql-action/upload-sarif` (needs `s
 
 ## Step 3 — Optionally register the MCP server
 
-Prefer the published npm entrypoints (verified):
+Prefer the published npm entrypoints (verified). There is **no** npm package named `doc-lag-mcp` — `npx doc-lag-mcp` 404s. The `doc-lag-mcp` binary is shipped **inside** package `doc-lag`:
 
 ```bash
 npx -y doc-lag mcp
-# equivalent standalone bin:
-npx -y doc-lag-mcp
+# same bin via the doc-lag package:
+npx -y -p doc-lag doc-lag-mcp
+# or after: npm install -g doc-lag
+doc-lag-mcp
 ```
 
-Both are provided by package `doc-lag` (`bin.doc-lag` → `dist/cli.js`, `bin.doc-lag-mcp` → `dist/mcp/main.js`).
+Package bins: `bin.doc-lag` → `dist/cli.js`, `bin.doc-lag-mcp` → `dist/mcp/main.js`.
 
 Pick the config that matches the host tool. Do not invent alternate package names.
 
