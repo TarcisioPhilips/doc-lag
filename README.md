@@ -243,8 +243,9 @@ Docs-sync is **off by default**. When enabled, it can flag:
 
 - **Pairing rules** — configured code globs changed without a matching docs update
 - **Structured surfaces** — new GitHub Action inputs/outputs or `package.json` `bin` / (opt-in) `exports` not mentioned in docs
+- **CLI surfaces** — new commander / argparse / click flags and commands not mentioned in docs
 
-Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). CLI flag / MCP tool / env detectors land in follow-ups.
+Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). MCP tool / env detectors land in follow-ups.
 
 ### Exit codes
 

@@ -11,6 +11,11 @@ export interface SurfaceDecl {
   pointer: string;
   /** Short declaration literal for evidence `head`. */
   literal: string;
+  /**
+   * Additional names that satisfy the mention check
+   * (e.g. `--color` for `--no-color`, or `--no-shout` for `--shout`).
+   */
+  mentionNames?: string[];
 }
 
 export type DetectorFn = (path: string, content: string) => SurfaceDecl[];

@@ -24,7 +24,7 @@ Default scan: root README/AGENTS/CLAUDE/CONTRIBUTING, `docs/**`, `website/docs/*
 
 ## Docs-sync (optional)
 
-Off by default. Enable with `docsSync` in config, `--docs-sync`, or `DOC_LAG_DOCS_SYNC=true`. Emits `docs.missing` for pairing rules and new Action inputs/outputs / package bins (exports opt-in). Enforce with `--docs-sync-enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>`.
+Off by default. Enable with `docsSync` in config, `--docs-sync`, or `DOC_LAG_DOCS_SYNC=true`. Emits `docs.missing` for pairing rules and new Action inputs/outputs, package bins (exports opt-in), and CLI flags/commands (commander/argparse/click). Enforce with `--docs-sync-enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>`.
 
 ## Docs
 
