@@ -10,14 +10,15 @@ function isExecError(error: unknown): error is SpawnSyncReturns<string> {
 export function git(
   cwd: string,
   args: string[],
-  options: { env?: NodeJS.ProcessEnv } = {},
+  options: { env?: NodeJS.ProcessEnv; input?: string } = {},
 ): string {
   try {
     return execFileSync("git", ["-C", cwd, ...args], {
       encoding: "utf8",
       maxBuffer: 20 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [options.input !== undefined ? "pipe" : "ignore", "pipe", "pipe"],
       env: options.env,
+      input: options.input,
     });
   } catch (error) {
     const stderr = isExecError(error) ? String(error.stderr ?? "").trim() : "";
