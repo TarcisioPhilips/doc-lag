@@ -11,6 +11,7 @@ import { listFiles } from "../core/git.js";
 import { compareFindings } from "../findings/normalize.js";
 import type { DocsDiscoveryOptions, DocsSyncInfo, Finding } from "../types.js";
 import { buildCandidates } from "./candidates.js";
+import { evaluateDetectorFindings } from "./evaluate-detectors.js";
 import { evaluatePairingRules } from "./rules.js";
 
 export type { DocsSyncInfo };
@@ -48,7 +49,8 @@ function enabledDetectors(config: DocsSyncConfig): string[] {
  * Run the docs-sync check. When disabled, returns no info and no findings
  * so the scan report stays byte-identical to pre-docsSync output.
  *
- * Detectors are not wired in this step; pairing rules and skip/metadata run.
+ * Structured detectors (action.yml / package.json) and pairing rules run here;
+ * CLI/MCP/env detectors land in later tasks.
  */
 export function runDocsSync(options: DocsSyncEngineOptions): DocsSyncEngineResult {
   const config = resolveDocsSyncConfig(options.cwd, {
@@ -139,8 +141,27 @@ export function runDocsSync(options: DocsSyncEngineOptions): DocsSyncEngineResul
   });
   warnings.push(...candidates.warnings.filter((w) => !warnings.includes(w)));
 
-  // Detectors land in later tasks; newSurfaces stays 0 here.
-  const newSurfaces = 0;
+  const changeKindByPath = new Map<
+    string,
+    "added" | "modified" | "renamed" | "deleted"
+  >();
+  for (const file of candidates.codeCandidates) {
+    changeKindByPath.set(file.path, file.kind);
+  }
+
+  const detectorResult = evaluateDetectorFindings({
+    cwd: options.cwd,
+    effectiveBase,
+    head: options.headSha,
+    headFiles: headFilesList,
+    baseSidePaths: candidates.baseSidePaths,
+    headSidePaths: candidates.headSidePaths,
+    changeKindByPath,
+    config,
+    docsOptions: options.docsOptions,
+    warn,
+  });
+  warnings.push(...detectorResult.warnings.filter((w) => !warnings.includes(w)));
 
   const ruleFindings = evaluatePairingRules({
     cwd: options.cwd,
@@ -152,7 +173,7 @@ export function runDocsSync(options: DocsSyncEngineOptions): DocsSyncEngineResul
     config,
   });
 
-  const sorted = [...ruleFindings].sort(compareFindings);
+  const sorted = [...detectorResult.findings, ...ruleFindings].sort(compareFindings);
   const omitted = Math.max(0, sorted.length - config.maxFindings);
   const capped = omitted > 0 ? sorted.slice(0, config.maxFindings) : sorted;
 
@@ -166,7 +187,7 @@ export function runDocsSync(options: DocsSyncEngineOptions): DocsSyncEngineResul
       detectors: enabledDetectors(config),
       rulesEvaluated: config.rules.length,
       candidateFiles: candidates.codeCandidates.length,
-      newSurfaces,
+      newSurfaces: detectorResult.newSurfaces,
       findings: sorted.length,
       omitted,
       truncated: candidates.truncated || undefined,

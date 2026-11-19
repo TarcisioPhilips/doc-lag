@@ -239,7 +239,12 @@ Example `doc-lag.config.json`:
 }
 ```
 
-Docs-sync is **off by default**. When enabled, pairing rules flag code changes that lack a matching documentation update (`docs.missing`, needs-review). Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). Surface detectors (CLI flags, Action inputs, …) land in a follow-up.
+Docs-sync is **off by default**. When enabled, it can flag:
+
+- **Pairing rules** — configured code globs changed without a matching docs update
+- **Structured surfaces** — new GitHub Action inputs/outputs or `package.json` `bin` / (opt-in) `exports` not mentioned in docs
+
+Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). CLI flag / MCP tool / env detectors land in follow-ups.
 
 ### Exit codes
 
