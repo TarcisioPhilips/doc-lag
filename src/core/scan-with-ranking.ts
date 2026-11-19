@@ -40,6 +40,8 @@ export async function scanWithRanking(
     base: options.base,
     head: options.head,
     includeWorkingTree: options.includeWorkingTree,
+    docs: options.docs,
+    configPath: options.configPath,
   });
 
   if (provider === "none") {

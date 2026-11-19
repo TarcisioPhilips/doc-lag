@@ -9,8 +9,10 @@ repository, and never modifies that repository.
 ```
 git range (base..head)  [optional: ephemeral WORKING_TREE commit]
   → source extractors     (facts from changed manifests, env examples, path changes)
-  → documentation discovery
-  → documentation extractors (references in Markdown: scripts, links, env vars)
+  → resolve docs config   (defaults ← doc-lag.config.json ← CLI/Action/MCP)
+  → documentation discovery (Markdown + MDX globs; include/exclude)
+  → prepare doc content   (frontmatter; MDX import/export/JSX neutralized)
+  → documentation extractors (references: scripts, links, env vars)
   → rules                 (compare facts vs references)
   → finding normalizer    (stable IDs, deterministic sort)
   → optional Jev ranking  (--rank jev only: reorder needs-review/unknown; never change status)
@@ -29,7 +31,9 @@ and stash are untouched.
 | Area | Role |
 | --- | --- |
 | `src/core/git.ts` | Resolve refs, list trees, read files at a revision, diff paths |
-| `src/core/docs.ts` | Decide which Markdown files are in scope |
+| `src/core/docs.ts` | Decide which Markdown/MDX files are in scope (glob include/exclude) |
+| `src/core/docs-config.ts` | Defaults, `doc-lag.config.json` load, precedence |
+| `src/core/doc-content.ts` | Frontmatter + MDX preparation (line-preserving) |
 | `src/extractors/package-scripts.ts` | Extract script changes from package.json at base/head |
 | `src/extractors/markdown-scripts.ts` | Extract script invocations from Markdown |
 | `src/extractors/markdown-links.ts` | Extract local links and inline code paths from Markdown |

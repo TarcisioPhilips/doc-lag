@@ -10,6 +10,8 @@ import { evaluateLinksBroken } from "../rules/links-broken.js";
 import { evaluateScriptsMissing } from "../rules/scripts-missing.js";
 import type { EnvReference, Finding, LocalLinkReference, ScanOptions, ScanReport, ScriptInvocation } from "../types.js";
 import { SCHEMA_VERSION, TOOL_NAME } from "../types.js";
+import { prepareDocumentationContent } from "./doc-content.js";
+import { resolveDocsDiscoveryOptions } from "./docs-config.js";
 import { listDocumentationFiles } from "./docs.js";
 import {
   assertGitRepository,
@@ -27,7 +29,8 @@ function isPackageJson(filePath: string): boolean {
  * Scan a git range and return a versioned report.
  *
  * Pipeline: resolve refs → extract path/script/env changes →
- * discover Markdown docs at head → extract script, link, and env references →
+ * resolve docs config → discover Markdown/MDX docs at head →
+ * prepare content (frontmatter/MDX) → extract script, link, and env references →
  * evaluate rules → normalize findings.
  */
 export function scan(options: ScanOptions): ScanReport {
@@ -50,7 +53,12 @@ export function scan(options: ScanOptions): ScanReport {
 
   const pathChanges = extractPathChanges(cwd, base, head);
 
-  const docPaths = listDocumentationFiles(headFiles);
+  const docsOptions = resolveDocsDiscoveryOptions(cwd, {
+    configPath: options.configPath,
+    include: options.docs?.include,
+    exclude: options.docs?.exclude,
+  });
+  const docPaths = listDocumentationFiles(headFiles, docsOptions);
   const invocations: ScriptInvocation[] = [];
   const linkReferences: LocalLinkReference[] = [];
   const envReferences: EnvReference[] = [];
@@ -60,9 +68,10 @@ export function scan(options: ScanOptions): ScanReport {
     if (content === null) {
       continue;
     }
-    invocations.push(...extractScriptInvocations(content, docPath));
-    linkReferences.push(...extractLocalLinks(content, docPath));
-    envReferences.push(...extractEnvReferences(content, docPath));
+    const prepared = prepareDocumentationContent(content, docPath);
+    invocations.push(...extractScriptInvocations(prepared, docPath));
+    linkReferences.push(...extractLocalLinks(prepared, docPath));
+    envReferences.push(...extractEnvReferences(prepared, docPath));
   }
 
   const allFindings: Finding[] = [

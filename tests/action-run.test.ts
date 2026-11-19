@@ -47,6 +47,9 @@ describe("action inputs and outputs", () => {
       rank: "none",
       base: undefined,
       head: undefined,
+      config: undefined,
+      docsInclude: undefined,
+      docsExclude: undefined,
     });
     expect(
       parseActionInputs({
@@ -57,6 +60,9 @@ describe("action inputs and outputs", () => {
         DOC_LAG_RANK: "jev",
         DOC_LAG_BASE: "abc",
         DOC_LAG_HEAD: "def",
+        DOC_LAG_CONFIG: "doc-lag.config.json",
+        DOC_LAG_DOCS_INCLUDE: "README.md, docs/**/*.mdx",
+        DOC_LAG_DOCS_EXCLUDE: "**/CHANGELOG.md",
       }),
     ).toEqual({
       failOn: "none",
@@ -66,6 +72,9 @@ describe("action inputs and outputs", () => {
       rank: "jev",
       base: "abc",
       head: "def",
+      config: "doc-lag.config.json",
+      docsInclude: ["README.md", "docs/**/*.mdx"],
+      docsExclude: ["**/CHANGELOG.md"],
     });
   });
 

@@ -18,6 +18,10 @@ npx -y -p doc-lag doc-lag-mcp
 
 Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md
 
+## Docs discovery
+
+Default scan: root README/AGENTS/CLAUDE/CONTRIBUTING, `docs/**`, `website/docs/**`, `apps/docs/**`, `packages/*/README.md`, `content/**` — `.md` and `.mdx`. Config: `doc-lag.config.json` or `--docs-include` / `--docs-exclude`. Planned: OpenAPI/Swagger and reStructuredText support.
+
 ## Docs
 
 - [README](https://github.com/TarcisioPhilips/doc-lag/blob/main/README.md): human quickstart, Action, MCP, options, Jev notes

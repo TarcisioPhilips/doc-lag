@@ -21,6 +21,8 @@ npx -y doc-lag mcp
 npx -y -p doc-lag doc-lag-mcp
 ```
 
+Docs in scope by default: root `README`/`AGENTS`/`CLAUDE`/`CONTRIBUTING`, `docs/**`, common site/monorepo paths, `.md` + `.mdx`. Configure with `doc-lag.config.json` or `--docs-include` / `--docs-exclude`. Planned: OpenAPI/Swagger and reStructuredText support.
+
 Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (requires `TYPESAFE_API_KEY`; sends diff/doc excerpts to a third party).
 
 ## If you are developing doc-lag itself

@@ -4,5 +4,6 @@ coverage/
 *.log
 .DS_Store
 .tmp/
+.plans/
 docs/demo/.last-demo-repo
 docs/demo/.last-demo-bin

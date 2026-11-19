@@ -180,6 +180,36 @@ describe("CLI", () => {
     }
   });
 
+  it("honors --docs-include for MDX paths", () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "package.json": packageJson({ "deploy:preview": "vite preview" }),
+          "README.md": "# App\n",
+          "notes/run.mdx": "Use `npm run deploy:preview`.\n",
+        },
+        headFiles: {
+          "package.json": packageJson({}),
+        },
+      }),
+    );
+
+    const result = runCli([
+      "scan",
+      "--base",
+      fixture.base,
+      "--head",
+      fixture.head,
+      "--cwd",
+      fixture.repo,
+      "--docs-include",
+      "notes/**/*.mdx",
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("notes/run.mdx");
+    expect(result.stdout).not.toContain("README.md:1");
+  });
+
   it("runScanCommand returns the same exit contract as the CLI", async () => {
     const fixture = track(
       createFixtureRepo({

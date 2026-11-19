@@ -53,6 +53,7 @@ describe("isDocumentationPath", () => {
     expect(isDocumentationPath("CONTRIBUTING.md")).toBe(true);
     expect(isDocumentationPath("docs/setup.md")).toBe(true);
     expect(isDocumentationPath("docs/guide/install.md")).toBe(true);
+    expect(isDocumentationPath("docs/guide.mdx")).toBe(true);
   });
 
   it("excludes other files", () => {

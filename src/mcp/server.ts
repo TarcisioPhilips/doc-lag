@@ -57,6 +57,25 @@ const scanDiffInputSchema = {
     .describe(
       'Optional semantic ranking. Default "none" is offline and deterministic. "jev" reorders needs-review/unknown findings via TypeSafe AI (requires TYPESAFE_API_KEY); sends diff summaries and doc excerpts to a third party; never changes finding status.',
     ),
+  config: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Optional path to doc-lag.config.json (relative to cwd). When omitted, auto-discovers doc-lag.config.json or .doc-lag.json under the scan cwd.",
+    ),
+  docs_include: z
+    .array(z.string().min(1))
+    .optional()
+    .describe(
+      "Optional documentation include globs. When set, replaces built-in/config include patterns.",
+    ),
+  docs_exclude: z
+    .array(z.string().min(1))
+    .optional()
+    .describe(
+      "Optional documentation exclude globs. When set, replaces built-in/config exclude patterns.",
+    ),
 };
 
 const explainFindingInputSchema = {

@@ -197,7 +197,7 @@ Or use MCP `scan_diff` with `include_working_tree: true` when the user has uncom
 ## CLI reference (consumer)
 
 ```bash
-npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--rank none|jev] [--cwd <path>]
+npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--rank none|jev] [--cwd <path>] [--config <path>] [--docs-include <glob>] [--docs-exclude <glob>]
 ```
 
 | Exit | Meaning |
@@ -208,6 +208,8 @@ npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-o
 
 Optional ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is available in **0.3.0+**. Only enable it when the user asks; it requires `TYPESAFE_API_KEY` and sends diff summaries + doc excerpts to `https://api.typesafe.ai`. Prefer `npx doc-lag` and Action `uses: TarcisioPhilips/doc-lag@v0`.
 
+Optional docs discovery: `doc-lag.config.json`, `--docs-include` / `--docs-exclude`, Action `docs-include` / `docs-exclude`, MCP `docs_include` / `docs_exclude`. See README **What counts as documentation**.
+
 ---
 
 ## What doc-lag checks
@@ -216,7 +218,7 @@ Optional ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is availa
 - **`links.broken`** — local Markdown/image links (confirmed) or inline path heuristics (needs-review) broken by the diff
 - **`env.stale`** — env keys removed from committed example files still mentioned in docs
 
-Docs scanned: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`.  
+Docs scanned by default: root `README`/`AGENTS`/`CLAUDE`/`CONTRIBUTING`, `docs/**`, common site/monorepo paths — `.md` and `.mdx`. Not yet: OpenAPI, Sphinx `.rst`.  
 Pre-existing drift (already wrong at `base`) is intentionally not reported.
 
 ---
