@@ -26,7 +26,8 @@ Default scan: root README/AGENTS/CLAUDE/CONTRIBUTING, `docs/**`, `website/docs/*
 
 - [README](https://github.com/TarcisioPhilips/doc-lag/blob/main/README.md): human quickstart, Action, MCP, options, Jev notes
 - [docs/AGENT_SETUP.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/AGENT_SETUP.md): step-by-step agent install (workflow + MCP configs)
-- [AGENTS.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/AGENTS.md): short agent orientation
+- [AGENTS.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/AGENTS.md): short agent orientation + Development workflow
+- [CONTRIBUTING.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/CONTRIBUTING.md): human pointer to the same workflow
 - [PROJECT_SPEC.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/PROJECT_SPEC.md): product/spec
 - [docs/ARCHITECTURE.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/ARCHITECTURE.md): internals
 - [docs/validation.md](https://github.com/TarcisioPhilips/doc-lag/blob/main/docs/validation.md): competitive validation notes

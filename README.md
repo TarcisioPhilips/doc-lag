@@ -391,6 +391,8 @@ these evidence-backed doc hits), not broad repository linting or age-based
 
 ## Contributing / development
 
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the **Development workflow** in [`AGENTS.md`](AGENTS.md) (spec → plan → tests → focused PRs; same process for humans and agents).
+
 From a clone (Node 20+):
 
 ```bash
