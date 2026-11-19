@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Config schema support for `docsSync` in `doc-lag.config.json` / `.doc-lag.json` (types, defaults, strict validation, env `DOC_LAG_DOCS_SYNC` / `DOC_LAG_DOCS_SYNC_ENFORCE`); the docs-sync check itself is not wired into scan yet and remains off by default
 - MDX support (`.mdx`) with heuristic preparation: YAML frontmatter, `import`/`export`, and JSX/MDX expressions are neutralized without shifting finding line numbers
 - Configurable documentation discovery via `doc-lag.config.json` / `.doc-lag.json` (`docs.include` / `docs.exclude`)
 - CLI: `--config`, `--docs-include`, `--docs-exclude`; env `DOC_LAG_CONFIG`

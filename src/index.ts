@@ -10,6 +10,24 @@ export {
   resolveDocsDiscoveryOptions,
   parseGlobList,
 } from "./core/docs-config.js";
+export {
+  DEFAULT_CODE_EXCLUDE,
+  SURFACE_KINDS,
+  createDefaultDocsSyncConfig,
+  parseDocsSyncBoolean,
+  parseDocsSyncEnv,
+  parseDocsSyncSection,
+  resolveDocsSyncConfig,
+} from "./core/docs-sync-config.js";
+export type {
+  ChangeKind,
+  DetectorConfig,
+  DocsSyncConfig,
+  DocsSyncConfigFile,
+  DocsSyncOverrides,
+  DocsSyncRule,
+  SurfaceKind,
+} from "./core/docs-sync-config.js";
 export { prepareDocumentationContent } from "./core/doc-content.js";
 export { ScanError } from "./errors.js";
 export { formatJson } from "./reporters/json.js";
