@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Broader default include globs: `documentation/**`, `website/docs/**`, `website/src/pages/**`, `apps/docs/**`, `packages/*/README.md`, `packages/*/docs/**`, `apps/*/README.md`, `content/**` (md + mdx)
 - Default excludes for generated/build trees and `CHANGELOG.md` / `LICENSE.md`
 - README section **What counts as documentation**
+- Shared **Development workflow** in [`AGENTS.md`](AGENTS.md) (spec → plan → tests → focused PRs; docs sync; safety; no feature-PR releases) and [`CONTRIBUTING.md`](CONTRIBUTING.md) pointer for humans and coding agents
 
 ### Changed
 
