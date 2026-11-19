@@ -73,6 +73,11 @@ export type {
   SurfaceInfo,
 } from "./types.js";
 export { runDocsSync } from "./docs-sync/engine.js";
+export {
+  listRegisteredDetectors,
+  STRUCTURED_DETECTOR_KINDS,
+} from "./docs-sync/detectors/registry.js";
+export type { SurfaceDecl } from "./docs-sync/detectors/types.js";
 export type { RuleInfo } from "./mcp/rules.js";
 export type { McpHandlerContext } from "./mcp/handlers.js";
 export type { ScanWithRankingOptions } from "./core/scan-with-ranking.js";

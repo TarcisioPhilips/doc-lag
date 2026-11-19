@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Docs-sync pairing rules engine (`docs.missing`): enable with `docsSync` in config or `--docs-sync` / `DOC_LAG_DOCS_SYNC`; optional `--docs-sync-enforce` / `DOC_LAG_DOCS_SYNC_ENFORCE`; skip via `Docs-Not-Needed` commit trailer or `no-docs-needed` label (Action); text/JSON report `docsSync` metadata. Surface detectors are not wired yet (rules-only). Off by default; output stays byte-identical when disabled
+- Docs-sync structured surface detectors for `action.input` / `action.output` (YAML via `yaml`) and `package.bin` / `package.exports`, plus a mention index over in-scope docs (MDX/frontmatter-aware). CLI/MCP/env detectors still pending
+- Docs-sync pairing rules engine (`docs.missing`): enable with `docsSync` in config or `--docs-sync` / `DOC_LAG_DOCS_SYNC`; optional `--docs-sync-enforce` / `DOC_LAG_DOCS_SYNC_ENFORCE`; skip via `Docs-Not-Needed` commit trailer or `no-docs-needed` label (Action); text/JSON report `docsSync` metadata. Off by default; output stays byte-identical when disabled
 - Config schema support for `docsSync` in `doc-lag.config.json` / `.doc-lag.json` (types, defaults, strict validation, env `DOC_LAG_DOCS_SYNC` / `DOC_LAG_DOCS_SYNC_ENFORCE`)
 - MDX support (`.mdx`) with heuristic preparation: YAML frontmatter, `import`/`export`, and JSX/MDX expressions are neutralized without shifting finding line numbers
 - Configurable documentation discovery via `doc-lag.config.json` / `.doc-lag.json` (`docs.include` / `docs.exclude`)
