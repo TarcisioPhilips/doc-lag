@@ -4,6 +4,10 @@ function formatEvidence(item: EvidenceItem): string[] {
   if (item.pointer === "deleted") {
     return [`Evidence: ${item.path}`, `  deleted in this diff`];
   }
+  if (item.pointer === "changed") {
+    const kind = typeof item.head === "string" ? item.head : "changed";
+    return [`Evidence: ${item.path}  (${kind})`];
+  }
   if (item.pointer.startsWith("renamed → ")) {
     const newPath = item.pointer.slice("renamed → ".length);
     return [`Evidence: ${item.path}`, `  renamed → ${newPath}`];
@@ -24,6 +28,8 @@ function formatEvidence(item: EvidenceItem): string[] {
   if (factName) {
     lines.push(`  base: ${describePresence(factName, item.base)}`);
     lines.push(`  head: ${describePresence(factName, item.head)}`);
+  } else if (typeof item.head === "string" && item.pointer.startsWith("#L")) {
+    lines.push(`  head: ${item.head}`);
   }
   return lines;
 }
@@ -66,8 +72,9 @@ export function formatText(report: ScanReport): string {
   const count = report.findings.length;
   const noun = count === 1 ? "finding" : "findings";
   const header = `doc-lag  ${count} ${noun}  (${report.base}..${report.head})`;
+  const footers = `${formatRankingFooter(report)}${formatDocsSyncFooter(report)}`;
   if (count === 0) {
-    return `${header}${formatRankingFooter(report)}\n`;
+    return `${header}${footers}\n`;
   }
   const blocks = report.findings.map((finding) => {
     const status = finding.status.toUpperCase();
@@ -79,8 +86,7 @@ export function formatText(report: ScanReport): string {
       `Suggested action: ${finding.suggestion}`,
     ]);
   });
-  const rankingFooter = formatRankingFooter(report);
-  return `${header}\n\n${blocks.join("\n\n")}${rankingFooter}\n`;
+  return `${header}\n\n${blocks.join("\n\n")}${footers}\n`;
 }
 
 function formatRankingFooter(report: ScanReport): string {
@@ -98,6 +104,27 @@ function formatRankingFooter(report: ScanReport): string {
   ];
   if (ranking.warning) {
     parts.push(`warning=${ranking.warning}`);
+  }
+  return `\n\n${parts.join(" · ")}`;
+}
+
+function formatDocsSyncFooter(report: ScanReport): string {
+  const info = report.docsSync;
+  if (!info) {
+    return "";
+  }
+  if (info.status === "skipped") {
+    return `\n\nDocs sync: skipped · reason=${info.skipReason ?? "unknown"}`;
+  }
+  const parts = [
+    "Docs sync: ran",
+    `detectors=${info.detectors.length}`,
+    `rules=${info.rulesEvaluated}`,
+    `new surfaces=${info.newSurfaces}`,
+    `missing docs=${info.findings}`,
+  ];
+  if (info.omitted > 0) {
+    parts.push(`omitted=${info.omitted}`);
   }
   return `\n\n${parts.join(" · ")}`;
 }

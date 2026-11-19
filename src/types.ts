@@ -30,6 +30,18 @@ export interface FindingRanking {
   confidence: number;
 }
 
+export interface SurfaceInfo {
+  trigger: "detector" | "rule";
+  kind?: string;
+  name?: string;
+  source?: { path: string; line: number };
+  rule?: string;
+  package?: string;
+  matchedFiles?: string[];
+  matchedFilesTotal?: number;
+  expectedDocs: string[];
+}
+
 export interface Finding {
   id: string;
   ruleId: string;
@@ -45,6 +57,10 @@ export interface Finding {
    * equivalent) successfully scored this finding. Never changes `status`.
    */
   ranking?: FindingRanking;
+  /** Present on docs.missing findings. */
+  surface?: SurfaceInfo;
+  /** True when docsSync.enforce is on for this docs.missing finding. */
+  enforced?: boolean;
 }
 
 export interface ScanSummary {
@@ -73,6 +89,26 @@ export interface RankingInfo {
   warning?: string;
 }
 
+/**
+ * Present only when docsSync ran or was skipped (absent when disabled so
+ * default reports stay byte-identical).
+ */
+export interface DocsSyncInfo {
+  status: "ran" | "skipped";
+  skipReason?: string;
+  enforced: boolean;
+  effectiveBase: string;
+  mergeBaseFallback?: boolean;
+  detectors: string[];
+  rulesEvaluated: number;
+  candidateFiles: number;
+  newSurfaces: number;
+  findings: number;
+  omitted: number;
+  truncated?: boolean;
+  warnings: string[];
+}
+
 export interface ScanReport {
   schemaVersion: typeof SCHEMA_VERSION;
   tool: typeof TOOL_NAME;
@@ -83,6 +119,8 @@ export interface ScanReport {
   summary: ScanSummary;
   /** Present only when semantic ranking was requested (`--rank jev`, etc.). */
   ranking?: RankingInfo;
+  /** Present only when the docs-sync check was enabled for this run. */
+  docsSync?: DocsSyncInfo;
 }
 
 export type RankProvider = "none" | "jev";
@@ -109,6 +147,16 @@ export interface ScanOptions {
   docs?: Partial<DocsDiscoveryOptions>;
   /** Explicit config file path (relative to cwd or absolute). */
   configPath?: string;
+  /** Force-enable/disable docs-sync (overrides config + env). */
+  docsSyncEnabled?: boolean;
+  /** Force docs-sync enforce for this run (implies enable when set true from CLI). */
+  docsSyncEnforce?: boolean;
+  /** Replace docsSync.skipLabels for this run (Action). */
+  docsSyncSkipLabels?: string[];
+  /** PR labels from the Action event (label skip). */
+  prLabels?: string[];
+  env?: NodeJS.ProcessEnv;
+  warn?: (message: string) => void;
 }
 
 export interface ScriptInvocation {

@@ -1,3 +1,4 @@
+import { runDocsSync } from "../docs-sync/engine.js";
 import { diffEnvExamples, isEnvExampleFile } from "../extractors/env-example.js";
 import { extractEnvReferences } from "../extractors/markdown-env.js";
 import { extractLocalLinks } from "../extractors/markdown-links.js";
@@ -74,15 +75,32 @@ export function scan(options: ScanOptions): ScanReport {
     envReferences.push(...extractEnvReferences(prepared, docPath));
   }
 
+  const docsSyncResult = runDocsSync({
+    cwd,
+    base: options.base,
+    head: headLabel,
+    baseSha: base,
+    headSha: head,
+    docsOptions,
+    configPath: options.configPath,
+    enabled: options.docsSyncEnabled,
+    enforce: options.docsSyncEnforce,
+    skipLabels: options.docsSyncSkipLabels,
+    prLabels: options.prLabels,
+    env: options.env,
+    warn: options.warn,
+  });
+
   const allFindings: Finding[] = [
     ...evaluateScriptsMissing(scriptChanges, invocations),
     ...evaluateLinksBroken(linkReferences, pathChanges, baseFiles, headFiles),
     ...evaluateEnvVarsStale(envChanges, envReferences),
+    ...docsSyncResult.findings,
   ];
 
   const findings = normalizeFindings(allFindings);
 
-  return {
+  const report: ScanReport = {
     schemaVersion: SCHEMA_VERSION,
     tool: TOOL_NAME,
     mode: "diff",
@@ -91,4 +109,8 @@ export function scan(options: ScanOptions): ScanReport {
     findings,
     summary: summarize(findings),
   };
+  if (docsSyncResult.info) {
+    report.docsSync = docsSyncResult.info;
+  }
+  return report;
 }

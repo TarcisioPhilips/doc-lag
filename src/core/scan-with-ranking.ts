@@ -42,6 +42,12 @@ export async function scanWithRanking(
     includeWorkingTree: options.includeWorkingTree,
     docs: options.docs,
     configPath: options.configPath,
+    docsSyncEnabled: options.docsSyncEnabled,
+    docsSyncEnforce: options.docsSyncEnforce,
+    docsSyncSkipLabels: options.docsSyncSkipLabels,
+    prLabels: options.prLabels,
+    env: options.env,
+    warn: options.warn,
   });
 
   if (provider === "none") {
