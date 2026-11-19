@@ -2,11 +2,16 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { ScanError } from "../errors.js";
 import type { DocsDiscoveryOptions } from "../types.js";
+import {
+  parseDocsSyncSection,
+  type DocsSyncConfigFile,
+} from "./docs-sync-config.js";
 
 export type { DocsDiscoveryOptions };
 
 export interface DocLagConfigFile {
   docs?: Partial<DocsDiscoveryOptions>;
+  docsSync?: DocsSyncConfigFile;
 }
 
 export interface DocsConfigOverrides {
@@ -68,26 +73,36 @@ export function parseDocLagConfig(raw: unknown, sourceLabel: string): DocLagConf
     throw new ScanError(`Invalid config ${sourceLabel}: expected a JSON object`);
   }
   const body = raw as Record<string, unknown>;
-  if (body.docs === undefined) {
-    return {};
-  }
-  if (body.docs === null || typeof body.docs !== "object" || Array.isArray(body.docs)) {
-    throw new ScanError(`Invalid config ${sourceLabel}: "docs" must be an object`);
-  }
-  const docs = body.docs as Record<string, unknown>;
-  const result: DocLagConfigFile = { docs: {} };
-  if (docs.include !== undefined) {
-    if (!isStringArray(docs.include)) {
-      throw new ScanError(`Invalid config ${sourceLabel}: "docs.include" must be an array of strings`);
+  const result: DocLagConfigFile = {};
+
+  if (body.docs !== undefined) {
+    if (body.docs === null || typeof body.docs !== "object" || Array.isArray(body.docs)) {
+      throw new ScanError(`Invalid config ${sourceLabel}: "docs" must be an object`);
     }
-    result.docs!.include = docs.include.map((item) => item.trim()).filter(Boolean);
-  }
-  if (docs.exclude !== undefined) {
-    if (!isStringArray(docs.exclude)) {
-      throw new ScanError(`Invalid config ${sourceLabel}: "docs.exclude" must be an array of strings`);
+    const docs = body.docs as Record<string, unknown>;
+    result.docs = {};
+    if (docs.include !== undefined) {
+      if (!isStringArray(docs.include)) {
+        throw new ScanError(
+          `Invalid config ${sourceLabel}: "docs.include" must be an array of strings`,
+        );
+      }
+      result.docs.include = docs.include.map((item) => item.trim()).filter(Boolean);
     }
-    result.docs!.exclude = docs.exclude.map((item) => item.trim()).filter(Boolean);
+    if (docs.exclude !== undefined) {
+      if (!isStringArray(docs.exclude)) {
+        throw new ScanError(
+          `Invalid config ${sourceLabel}: "docs.exclude" must be an array of strings`,
+        );
+      }
+      result.docs.exclude = docs.exclude.map((item) => item.trim()).filter(Boolean);
+    }
   }
+
+  if (body.docsSync !== undefined) {
+    result.docsSync = parseDocsSyncSection(body.docsSync, sourceLabel);
+  }
+
   return result;
 }
 
