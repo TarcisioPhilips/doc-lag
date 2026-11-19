@@ -37,6 +37,23 @@ export interface CliScanOptions {
   configPath?: string;
   docsInclude?: string[];
   docsExclude?: string[];
+  /** undefined = config/env; true/false = CLI force. */
+  docsSync?: boolean;
+  docsSyncEnforce?: boolean;
+}
+
+function resolveDocsSyncCliFlags(options: {
+  /** Set by `--docs-sync` / `--no-docs-sync` (commander boolean pair). */
+  docsSync?: boolean;
+  docsSyncEnforce?: boolean;
+}): { docsSync?: boolean; docsSyncEnforce?: boolean } {
+  // Commander only sets docsSync when one of the flags is present.
+  let docsSync = options.docsSync;
+  const docsSyncEnforce = options.docsSyncEnforce === true ? true : undefined;
+  if (docsSyncEnforce === true && docsSync === undefined) {
+    docsSync = true;
+  }
+  return { docsSync, docsSyncEnforce };
 }
 
 function resolveConfigPathOption(
@@ -64,6 +81,8 @@ export async function runScanCommand(
       include: options.docsInclude,
       exclude: options.docsExclude,
     },
+    docsSyncEnabled: options.docsSync,
+    docsSyncEnforce: options.docsSyncEnforce,
   });
   const output =
     options.format === "json"
@@ -126,6 +145,18 @@ export function createProgram(): Command {
       (value: string, previous: string[]) => [...previous, value],
       [] as string[],
     )
+    .option(
+      "--docs-sync",
+      "Force-enable the docs-sync check (overrides config / DOC_LAG_DOCS_SYNC)",
+    )
+    .option(
+      "--no-docs-sync",
+      "Force-disable the docs-sync check (overrides config / DOC_LAG_DOCS_SYNC)",
+    )
+    .option(
+      "--docs-sync-enforce",
+      "Fail the scan when docs.missing findings exist under --fail-on confirmed (implies --docs-sync)",
+    )
     .addHelpText(
       "after",
       `
@@ -139,15 +170,19 @@ Examples:
   doc-lag scan --base origin/main --head HEAD --format json --fail-on confirmed
   doc-lag scan --base main --head HEAD --rank jev   # requires TYPESAFE_API_KEY
   doc-lag scan --base main --docs-include "packages/*/README.md"
+  doc-lag scan --base main --docs-sync              # pairing rules / surface check
 
 Config:
-  doc-lag.config.json / .doc-lag.json   docs.include / docs.exclude globs
+  doc-lag.config.json / .doc-lag.json   docs.include / docs.exclude / docsSync
   DOC_LAG_CONFIG=<path>                 same as --config when the flag is omitted
   DOC_LAG_RANK=jev                      same as --rank jev when the flag is omitted
+  DOC_LAG_DOCS_SYNC=true|false          enable docs-sync when the flag is omitted
+  DOC_LAG_DOCS_SYNC_ENFORCE=true|false  enforce docs.missing when the flag is omitted
 
 Docs discovery defaults cover root README/AGENTS/CLAUDE/CONTRIBUTING, docs/**,
 website/docs, apps/docs, packages/*/README, content/** (md+mdx). See README
-"What counts as documentation".
+"What counts as documentation". Docs-sync is off by default; enable with
+docsSync in config or --docs-sync.
 `,
     )
     .action(
@@ -161,7 +196,10 @@ website/docs, apps/docs, packages/*/README, content/** (md+mdx). See README
         config?: string;
         docsInclude?: string[];
         docsExclude?: string[];
+        docsSync?: boolean;
+        docsSyncEnforce?: boolean;
       }) => {
+        const docsSyncFlags = resolveDocsSyncCliFlags(opts);
         const result = await runScanCommand({
           base: opts.base,
           head: opts.head,
@@ -175,6 +213,8 @@ website/docs, apps/docs, packages/*/README, content/** (md+mdx). See README
             opts.docsInclude && opts.docsInclude.length > 0 ? opts.docsInclude : undefined,
           docsExclude:
             opts.docsExclude && opts.docsExclude.length > 0 ? opts.docsExclude : undefined,
+          docsSync: docsSyncFlags.docsSync,
+          docsSyncEnforce: docsSyncFlags.docsSyncEnforce,
         });
         process.stdout.write(result.output);
         process.exitCode = result.exitCode;

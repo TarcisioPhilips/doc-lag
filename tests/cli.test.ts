@@ -210,6 +210,100 @@ describe("CLI", () => {
     expect(result.stdout).not.toContain("README.md:1");
   });
 
+  it("enables docs-sync via --docs-sync and config rules", () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "export {};\n",
+          "doc-lag.config.json": JSON.stringify({
+            docsSync: {
+              rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+            },
+          }),
+        },
+        headFiles: {
+          "src/cli/main.ts": "export const x = 1;\n",
+        },
+      }),
+    );
+
+    const enabled = runCli([
+      "scan",
+      "--base",
+      fixture.base,
+      "--head",
+      fixture.head,
+      "--cwd",
+      fixture.repo,
+      "--format",
+      "json",
+      "--fail-on",
+      "none",
+    ]);
+    expect(enabled.status).toBe(0);
+    const parsed = JSON.parse(enabled.stdout) as {
+      docsSync?: { status: string };
+      findings: { ruleId: string }[];
+    };
+    expect(parsed.docsSync?.status).toBe("ran");
+    expect(parsed.findings.some((f) => f.ruleId === "docs.missing")).toBe(true);
+
+    const disabled = runCli([
+      "scan",
+      "--base",
+      fixture.base,
+      "--head",
+      fixture.head,
+      "--cwd",
+      fixture.repo,
+      "--format",
+      "json",
+      "--fail-on",
+      "none",
+      "--no-docs-sync",
+    ]);
+    expect(disabled.status).toBe(0);
+    const parsedOff = JSON.parse(disabled.stdout) as {
+      docsSync?: unknown;
+      findings: { ruleId: string }[];
+    };
+    expect(parsedOff.docsSync).toBeUndefined();
+    expect(parsedOff.findings.some((f) => f.ruleId === "docs.missing")).toBe(false);
+  });
+
+  it("--docs-sync-enforce fails on docs.missing under --fail-on confirmed", () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "export {};\n",
+          "doc-lag.config.json": JSON.stringify({
+            docsSync: {
+              rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+            },
+          }),
+        },
+        headFiles: {
+          "src/cli/main.ts": "export const x = 1;\n",
+        },
+      }),
+    );
+
+    const result = runCli([
+      "scan",
+      "--base",
+      fixture.base,
+      "--head",
+      fixture.head,
+      "--cwd",
+      fixture.repo,
+      "--docs-sync-enforce",
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("docs.missing:rule:cli");
+  });
+
   it("runScanCommand returns the same exit contract as the CLI", async () => {
     const fixture = track(
       createFixtureRepo({

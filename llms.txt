@@ -22,6 +22,10 @@ Set up doc-lag in this repo following https://github.com/TarcisioPhilips/doc-lag
 
 Default scan: root README/AGENTS/CLAUDE/CONTRIBUTING, `docs/**`, `website/docs/**`, `apps/docs/**`, `packages/*/README.md`, `content/**` — `.md` and `.mdx`. Config: `doc-lag.config.json` or `--docs-include` / `--docs-exclude`. Planned: OpenAPI/Swagger and reStructuredText support.
 
+## Docs-sync (optional)
+
+Off by default. Enable with `docsSync` in config, `--docs-sync`, or `DOC_LAG_DOCS_SYNC=true`. Pairing rules emit `docs.missing` when configured code globs change without matching docs updates. Enforce with `--docs-sync-enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>`.
+
 ## Docs
 
 - [README](https://github.com/TarcisioPhilips/doc-lag/blob/main/README.md): human quickstart, Action, MCP, options, Jev notes

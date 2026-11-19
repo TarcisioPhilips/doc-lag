@@ -216,9 +216,12 @@ commands found in documentation.
 | `--config <path>` | auto-discover | `doc-lag.config.json` or `.doc-lag.json` |
 | `--docs-include <glob>` | built-in includes | Repeatable; replaces include when set |
 | `--docs-exclude <glob>` | built-in excludes | Repeatable; replaces exclude when set |
+| `--docs-sync` / `--no-docs-sync` | off | Force-enable/disable the docs-sync check |
+| `--docs-sync-enforce` | off | Fail on `docs.missing` under `--fail-on confirmed` (implies `--docs-sync`) |
 
 `DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted (**since 0.3.0**).  
-`DOC_LAG_CONFIG=<path>` is equivalent to `--config` when the flag is omitted.
+`DOC_LAG_CONFIG=<path>` is equivalent to `--config` when the flag is omitted.  
+`DOC_LAG_DOCS_SYNC=true|false` and `DOC_LAG_DOCS_SYNC_ENFORCE=true|false` match the docs-sync flags when omitted.
 
 Example `doc-lag.config.json`:
 
@@ -227,9 +230,16 @@ Example `doc-lag.config.json`:
   "docs": {
     "include": ["README.md", "docs/**/*.{md,mdx}", "packages/*/README.md"],
     "exclude": ["**/node_modules/**", "**/CHANGELOG.md"]
+  },
+  "docsSync": {
+    "rules": [
+      { "name": "cli", "code": ["src/cli/**"], "docs": ["README.md", "docs/**"] }
+    ]
   }
 }
 ```
+
+Docs-sync is **off by default**. When enabled, pairing rules flag code changes that lack a matching documentation update (`docs.missing`, needs-review). Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). Surface detectors (CLI flags, Action inputs, …) land in a follow-up.
 
 ### Exit codes
 

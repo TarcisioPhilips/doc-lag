@@ -61,6 +61,7 @@ export {
 export { SCHEMA_VERSION, TOOL_NAME } from "./types.js";
 export type {
   DocsDiscoveryOptions,
+  DocsSyncInfo,
   FailOn,
   Finding,
   FindingRanking,
@@ -69,7 +70,9 @@ export type {
   RankingInfo,
   ScanOptions,
   ScanReport,
+  SurfaceInfo,
 } from "./types.js";
+export { runDocsSync } from "./docs-sync/engine.js";
 export type { RuleInfo } from "./mcp/rules.js";
 export type { McpHandlerContext } from "./mcp/handlers.js";
 export type { ScanWithRankingOptions } from "./core/scan-with-ranking.js";
