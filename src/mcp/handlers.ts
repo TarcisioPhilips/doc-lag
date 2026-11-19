@@ -25,6 +25,12 @@ export interface ScanDiffInput {
    * via TypeSafe AI (requires TYPESAFE_API_KEY). Default `none` is offline.
    */
   rank?: RankProvider | string;
+  /** Optional path to doc-lag.config.json (relative to cwd / workspace). */
+  config?: string;
+  /** Optional docs include globs (replaces defaults/config when set). */
+  docs_include?: string[];
+  /** Optional docs exclude globs (replaces defaults/config when set). */
+  docs_exclude?: string[];
 }
 
 export interface ExplainFindingInput {
@@ -33,6 +39,9 @@ export interface ExplainFindingInput {
   head?: string;
   include_working_tree?: boolean;
   cwd?: string;
+  config?: string;
+  docs_include?: string[];
+  docs_exclude?: string[];
 }
 
 export interface ToolSuccess<T> {
@@ -57,6 +66,22 @@ function resolveScanCwd(ctx: McpHandlerContext, cwd: string | undefined): string
   return constrainToRoot(cwd ?? ".", ctx.workspaceRoot);
 }
 
+function resolveDocsOverrides(input: {
+  config?: string;
+  docs_include?: string[];
+  docs_exclude?: string[];
+}): { configPath?: string; docs?: { include?: string[]; exclude?: string[] } } {
+  const configPath = input.config?.trim() || undefined;
+  const include =
+    input.docs_include && input.docs_include.length > 0 ? input.docs_include : undefined;
+  const exclude =
+    input.docs_exclude && input.docs_exclude.length > 0 ? input.docs_exclude : undefined;
+  return {
+    configPath,
+    docs: include !== undefined || exclude !== undefined ? { include, exclude } : undefined,
+  };
+}
+
 function resolveScanOptions(
   ctx: McpHandlerContext,
   input: {
@@ -64,8 +89,18 @@ function resolveScanOptions(
     head?: string;
     include_working_tree?: boolean;
     cwd?: string;
+    config?: string;
+    docs_include?: string[];
+    docs_exclude?: string[];
   },
-): { cwd: string; base: string; head: string; includeWorkingTree: boolean } {
+): {
+  cwd: string;
+  base: string;
+  head: string;
+  includeWorkingTree: boolean;
+  configPath?: string;
+  docs?: { include?: string[]; exclude?: string[] };
+} {
   const cwd = resolveScanCwd(ctx, input.cwd);
   const includeWorkingTree = Boolean(input.include_working_tree);
   const head = input.head?.trim() || "HEAD";
@@ -76,7 +111,8 @@ function resolveScanOptions(
     throw new ScanError("Invalid base: must be a non-empty git ref");
   }
   const base = input.base?.trim() || resolveDefaultBase(cwd, head);
-  return { cwd, base, head, includeWorkingTree };
+  const docsOverrides = resolveDocsOverrides(input);
+  return { cwd, base, head, includeWorkingTree, ...docsOverrides };
 }
 
 function conciseScanText(report: ScanReport): string {
@@ -133,6 +169,8 @@ export async function handleScanDiff(
       rank,
       env: ctx.env,
       warn: ctx.warn,
+      configPath: options.configPath,
+      docs: options.docs,
     });
     return {
       ok: true,
@@ -171,6 +209,8 @@ export function handleExplainFinding(
       base: options.base,
       head: options.head,
       includeWorkingTree: options.includeWorkingTree,
+      configPath: options.configPath,
+      docs: options.docs,
     });
     const finding = report.findings.find((item) => item.id === findingId);
     if (!finding) {

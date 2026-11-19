@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- MDX support (`.mdx`) with heuristic preparation: YAML frontmatter, `import`/`export`, and JSX/MDX expressions are neutralized without shifting finding line numbers
+- Configurable documentation discovery via `doc-lag.config.json` / `.doc-lag.json` (`docs.include` / `docs.exclude`)
+- CLI: `--config`, `--docs-include`, `--docs-exclude`; env `DOC_LAG_CONFIG`
+- GitHub Action inputs: `config`, `docs-include`, `docs-exclude`
+- MCP `scan_diff` / `explain_finding` params: `config`, `docs_include`, `docs_exclude`
+- Broader default include globs: `documentation/**`, `website/docs/**`, `website/src/pages/**`, `apps/docs/**`, `packages/*/README.md`, `packages/*/docs/**`, `apps/*/README.md`, `content/**` (md + mdx)
+- Default excludes for generated/build trees and `CHANGELOG.md` / `LICENSE.md`
+- README section **What counts as documentation**
+
+### Changed
+
+- Default scan may report additional findings in monorepos and MDX doc sites (more paths in scope). Escape hatch: set `docs.include` to the legacy root + `docs/**/*.md` list. Findings for previously scanned Markdown paths remain compatible; report `schemaVersion` stays `1.0`.
+
 ## [0.3.0] — 2026-11-18
 
 ### Added

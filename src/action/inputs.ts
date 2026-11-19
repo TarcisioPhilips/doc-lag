@@ -1,3 +1,4 @@
+import { parseGlobList } from "../core/docs-config.js";
 import type { FailOn, RankProvider } from "../types.js";
 
 export interface ActionInputs {
@@ -11,6 +12,12 @@ export interface ActionInputs {
   base?: string;
   /** Optional explicit head ref/sha; otherwise taken from the pull_request event. */
   head?: string;
+  /** Optional path to doc-lag.config.json (relative to working-directory). */
+  config?: string;
+  /** Optional docs include globs (replaces defaults/config when set). */
+  docsInclude?: string[];
+  /** Optional docs exclude globs (replaces defaults/config when set). */
+  docsExclude?: string[];
 }
 
 export interface ActionOutputs {
@@ -72,6 +79,9 @@ export function parseActionInputs(env: NodeJS.ProcessEnv = process.env): ActionI
     rank: parseRank(readEnv("DOC_LAG_RANK", env)),
     base: readEnv("DOC_LAG_BASE", env),
     head: readEnv("DOC_LAG_HEAD", env),
+    config: readEnv("DOC_LAG_CONFIG", env),
+    docsInclude: parseGlobList(readEnv("DOC_LAG_DOCS_INCLUDE", env)),
+    docsExclude: parseGlobList(readEnv("DOC_LAG_DOCS_EXCLUDE", env)),
   };
 }
 

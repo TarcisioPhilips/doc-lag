@@ -23,6 +23,29 @@ It catches removed/renamed `package.json` scripts still documented as `npm`/`pnp
 commands, local Markdown links and paths broken by the diff, and env keys removed from
 committed example files (`.env.example` and similar) that docs still mention.
 
+### What counts as documentation
+
+By default doc-lag scans these paths at `head` (`.md` and `.mdx`):
+
+| Included | Examples |
+| --- | --- |
+| Root canonical docs | `README.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` |
+| Docs trees | `docs/**`, `documentation/**`, `content/**` |
+| Site / app docs | `website/docs/**`, `website/src/pages/**`, `apps/docs/**` |
+| Monorepo package docs | `packages/*/README.md`, `packages/*/docs/**`, `apps/*/README.md` |
+
+Excluded by default: `node_modules`, `.git`, `dist`, `build`, `.next`, `out`, `coverage`,
+`vendor`, `.venv`, `site`, `_site`, plus `CHANGELOG.md` / `LICENSE.md`.
+
+Configure with `doc-lag.config.json` (`docs.include` / `docs.exclude`), or CLI
+`--docs-include` / `--docs-exclude`, Action `docs-include` / `docs-exclude`, MCP
+`docs_include` / `docs_exclude`.
+
+Planned: OpenAPI/Swagger and reStructuredText support.
+
+MDX is prepared heuristically (frontmatter, `import`/`export`, JSX) so JSX/imports
+do not create false-positive findings; line numbers still refer to the original file.
+
 ![Terminal demo: after renaming API_TIMEOUT to REQUEST_TIMEOUT in .env.example, npx doc-lag scan reports a confirmed env.stale finding at docs/setup.md:3 with evidence and a rename suggestion](docs/demo/doc-lag-demo.gif)
 
 ---
@@ -172,7 +195,7 @@ change is not reported. That keeps the signal focused on the review at hand.
 | `links.broken` | Markdown / image links to files deleted or renamed in the diff | Inline `` `path/like` `` heuristics |
 | `env.stale` | Code-block / inline-code env keys removed from `.env.example` (and similar) | Bare keys in Markdown table cells |
 
-Markdown in scope: `README.md`, `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`.
+Documentation in scope: see [What counts as documentation](#what-counts-as-documentation) (Markdown + MDX; configurable globs).
 
 **confirmed** findings fail CI by default (`--fail-on confirmed`). **needs-review** findings are advisory and do not fail that threshold.
 
@@ -190,8 +213,23 @@ commands found in documentation.
 | `--fail-on <confirmed\|none>` | `confirmed` | CI threshold |
 | `--rank <none\|jev>` | `none` | Optional semantic ranking (**since 0.3.0**) |
 | `--cwd <path>` | current directory | Repository to scan |
+| `--config <path>` | auto-discover | `doc-lag.config.json` or `.doc-lag.json` |
+| `--docs-include <glob>` | built-in includes | Repeatable; replaces include when set |
+| `--docs-exclude <glob>` | built-in excludes | Repeatable; replaces exclude when set |
 
-`DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted (**since 0.3.0**).
+`DOC_LAG_RANK=jev` is equivalent to `--rank jev` when the flag is omitted (**since 0.3.0**).  
+`DOC_LAG_CONFIG=<path>` is equivalent to `--config` when the flag is omitted.
+
+Example `doc-lag.config.json`:
+
+```json
+{
+  "docs": {
+    "include": ["README.md", "docs/**/*.{md,mdx}", "packages/*/README.md"],
+    "exclude": ["**/node_modules/**", "**/CHANGELOG.md"]
+  }
+}
+```
 
 ### Exit codes
 

@@ -50,6 +50,24 @@ inputs:
       statuses — ordering/evidence only.
     required: false
     default: none
+  config:
+    description: >
+      Optional path to doc-lag.config.json (relative to working-directory).
+      When empty, auto-discovers doc-lag.config.json or .doc-lag.json.
+    required: false
+    default: ""
+  docs-include:
+    description: >
+      Optional documentation include globs (comma- or newline-separated).
+      When set, replaces built-in/config include patterns.
+    required: false
+    default: ""
+  docs-exclude:
+    description: >
+      Optional documentation exclude globs (comma- or newline-separated).
+      When set, replaces built-in/config exclude patterns.
+    required: false
+    default: ""
 
 outputs:
   findings-count:
@@ -105,6 +123,9 @@ runs:
         DOC_LAG_RANK: ${{ inputs.rank }}
         DOC_LAG_BASE: ${{ inputs.base }}
         DOC_LAG_HEAD: ${{ inputs.head }}
+        DOC_LAG_CONFIG: ${{ inputs.config }}
+        DOC_LAG_DOCS_INCLUDE: ${{ inputs.docs-include }}
+        DOC_LAG_DOCS_EXCLUDE: ${{ inputs.docs-exclude }}
         GITHUB_TOKEN: ${{ github.token }}
         TYPESAFE_API_KEY: ${{ env.TYPESAFE_API_KEY }}
       run: node "${{ github.action_path }}/dist/action/main.js"

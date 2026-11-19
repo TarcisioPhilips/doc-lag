@@ -81,6 +81,11 @@ export async function runAction(runtime: ActionRuntimeEnv = {}): Promise<ActionR
       env,
       fetchImpl: runtime.fetchImpl,
       warn,
+      configPath: inputs.config,
+      docs: {
+        include: inputs.docsInclude,
+        exclude: inputs.docsExclude,
+      },
     });
   } catch (error) {
     if (error instanceof ScanError) {

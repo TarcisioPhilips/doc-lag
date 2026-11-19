@@ -34,6 +34,20 @@ export interface CliScanOptions {
   cwd: string;
   rank?: RankProvider;
   env?: NodeJS.ProcessEnv;
+  configPath?: string;
+  docsInclude?: string[];
+  docsExclude?: string[];
+}
+
+function resolveConfigPathOption(
+  cliConfig: string | undefined,
+  env: NodeJS.ProcessEnv,
+): string | undefined {
+  if (cliConfig !== undefined && cliConfig.trim() !== "") {
+    return cliConfig.trim();
+  }
+  const fromEnv = env.DOC_LAG_CONFIG?.trim();
+  return fromEnv || undefined;
 }
 
 export async function runScanCommand(
@@ -45,6 +59,11 @@ export async function runScanCommand(
     head: options.head,
     rank: options.rank ?? "none",
     env: options.env,
+    configPath: options.configPath,
+    docs: {
+      include: options.docsInclude,
+      exclude: options.docsExclude,
+    },
   });
   const output =
     options.format === "json"
@@ -91,6 +110,22 @@ export function createProgram(): Command {
         .default(undefined),
     )
     .option("--cwd <path>", "Repository path (defaults to the current directory)")
+    .option(
+      "--config <path>",
+      "Path to doc-lag.config.json / .doc-lag.json (defaults to auto-discover under --cwd)",
+    )
+    .option(
+      "--docs-include <glob>",
+      "Documentation include glob (repeatable; replaces defaults/config include when set)",
+      (value: string, previous: string[]) => [...previous, value],
+      [] as string[],
+    )
+    .option(
+      "--docs-exclude <glob>",
+      "Documentation exclude glob (repeatable; replaces defaults/config exclude when set)",
+      (value: string, previous: string[]) => [...previous, value],
+      [] as string[],
+    )
     .addHelpText(
       "after",
       `
@@ -103,9 +138,16 @@ Examples:
   doc-lag scan --base main --head HEAD
   doc-lag scan --base origin/main --head HEAD --format json --fail-on confirmed
   doc-lag scan --base main --head HEAD --rank jev   # requires TYPESAFE_API_KEY
+  doc-lag scan --base main --docs-include "packages/*/README.md"
 
 Config:
-  DOC_LAG_RANK=jev   same as --rank jev when the flag is omitted
+  doc-lag.config.json / .doc-lag.json   docs.include / docs.exclude globs
+  DOC_LAG_CONFIG=<path>                 same as --config when the flag is omitted
+  DOC_LAG_RANK=jev                      same as --rank jev when the flag is omitted
+
+Docs discovery defaults cover root README/AGENTS/CLAUDE/CONTRIBUTING, docs/**,
+website/docs, apps/docs, packages/*/README, content/** (md+mdx). See README
+"What counts as documentation".
 `,
     )
     .action(
@@ -116,6 +158,9 @@ Config:
         failOn: FailOn;
         rank?: string;
         cwd?: string;
+        config?: string;
+        docsInclude?: string[];
+        docsExclude?: string[];
       }) => {
         const result = await runScanCommand({
           base: opts.base,
@@ -125,6 +170,11 @@ Config:
           cwd: opts.cwd ?? process.cwd(),
           rank: resolveRankOption(opts.rank, process.env),
           env: process.env,
+          configPath: resolveConfigPathOption(opts.config, process.env),
+          docsInclude:
+            opts.docsInclude && opts.docsInclude.length > 0 ? opts.docsInclude : undefined,
+          docsExclude:
+            opts.docsExclude && opts.docsExclude.length > 0 ? opts.docsExclude : undefined,
         });
         process.stdout.write(result.output);
         process.exitCode = result.exitCode;

@@ -1,5 +1,16 @@
 export { scan } from "./core/scan.js";
 export { scanWithRanking } from "./core/scan-with-ranking.js";
+export {
+  isDocumentationPath,
+  listDocumentationFiles,
+} from "./core/docs.js";
+export {
+  DEFAULT_DOCS_EXCLUDE,
+  DEFAULT_DOCS_INCLUDE,
+  resolveDocsDiscoveryOptions,
+  parseGlobList,
+} from "./core/docs-config.js";
+export { prepareDocumentationContent } from "./core/doc-content.js";
 export { ScanError } from "./errors.js";
 export { formatJson } from "./reporters/json.js";
 export { formatSarif } from "./reporters/sarif.js";
@@ -31,6 +42,7 @@ export {
 } from "./ranking/constants.js";
 export { SCHEMA_VERSION, TOOL_NAME } from "./types.js";
 export type {
+  DocsDiscoveryOptions,
   FailOn,
   Finding,
   FindingRanking,

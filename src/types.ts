@@ -87,6 +87,11 @@ export interface ScanReport {
 
 export type RankProvider = "none" | "jev";
 
+export interface DocsDiscoveryOptions {
+  include: string[];
+  exclude: string[];
+}
+
 export interface ScanOptions {
   cwd: string;
   base: string;
@@ -97,6 +102,13 @@ export interface ScanOptions {
    * The report's `head` field is then `"WORKING_TREE"`.
    */
   includeWorkingTree?: boolean;
+  /**
+   * Optional docs discovery overrides (include/exclude globs). When omitted,
+   * values are loaded from `doc-lag.config.json` / `.doc-lag.json` or built-in defaults.
+   */
+  docs?: Partial<DocsDiscoveryOptions>;
+  /** Explicit config file path (relative to cwd or absolute). */
+  configPath?: string;
 }
 
 export interface ScriptInvocation {
