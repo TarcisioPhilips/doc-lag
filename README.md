@@ -75,6 +75,7 @@ name: doc-lag
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -93,6 +94,8 @@ jobs:
         with:
           fail-on: confirmed
 ```
+
+Include `labeled` / `unlabeled` so adding the `no-docs-needed` label re-runs the check.
 
 ### MCP (coding agents)
 
@@ -348,14 +351,21 @@ On `pull_request`, the Action scans `base.sha..head.sha`, writes a job summary,
 and posts or updates a single sticky PR comment. Fork PRs without comment
 permission still get the job summary; the step does not fail for that reason.
 
+Subscribe to `types: [opened, synchronize, reopened, labeled, unlabeled]` so the
+`no-docs-needed` label skip re-runs when labels change. Labels are read from the
+event payload (no extra API call).
+
 **Inputs:** `fail-on`, `comment`, `working-directory`, `sarif`, `rank` (**since 0.3.0**),
-optional `base` / `head` overrides.  
+optional `base` / `head` overrides, `config` / `docs-include` / `docs-exclude`,
+`docs-sync` / `docs-sync-enforce` / `docs-sync-skip-labels` (empty = use config).  
 **Outputs:** `findings-count`, `confirmed-count`, `needs-review-count`,
-`report-path`, `sarif-path`.
+`docs-missing-count`, `report-path`, `sarif-path`.
 
 With `comment: true` (default), zero findings still upsert the sticky comment
 (“No documentation drift findings…”) so it is obvious the scan ran. Re-runs
-match `<!-- doc-lag-sticky -->` instead of posting duplicates.
+match `<!-- doc-lag-sticky -->` instead of posting duplicates. When docs-sync
+findings exist, the comment/summary include a **Missing documentation** section
+(not repeated under Needs review).
 
 The Action is a **composite action that installs and builds from source** in
 `${{ github.action_path }}` (locked by `package-lock.json`). Pin a tag or SHA for

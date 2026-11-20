@@ -9,6 +9,7 @@ import { formatSarif } from "../reporters/sarif.js";
 import type { ScanReport } from "../types.js";
 import { formatCommentBody } from "./comment.js";
 import {
+  extractPullRequestLabels,
   formatGithubOutputs,
   parseActionInputs,
   parseGithubEvent,
@@ -70,6 +71,7 @@ export async function runAction(runtime: ActionRuntimeEnv = {}): Promise<ActionR
       : {};
   const github = parseGithubEvent(eventName, env.GITHUB_REPOSITORY, payload);
   const range = resolveScanRange(inputs, github);
+  const prLabels = extractPullRequestLabels(payload);
 
   let report: ScanReport;
   try {
@@ -86,6 +88,10 @@ export async function runAction(runtime: ActionRuntimeEnv = {}): Promise<ActionR
         include: inputs.docsInclude,
         exclude: inputs.docsExclude,
       },
+      docsSyncEnabled: inputs.docsSync,
+      docsSyncEnforce: inputs.docsSyncEnforce,
+      docsSyncSkipLabels: inputs.docsSyncSkipLabels,
+      prLabels,
     });
   } catch (error) {
     if (error instanceof ScanError) {
@@ -128,10 +134,12 @@ export async function runAction(runtime: ActionRuntimeEnv = {}): Promise<ActionR
     warn,
   });
 
+  const docsMissingCount = report.findings.filter((f) => f.ruleId === "docs.missing").length;
   const outputs: ActionOutputs = {
     findingsCount: report.findings.length,
     confirmedCount: report.summary.confirmed,
     needsReviewCount: report.summary.needsReview,
+    docsMissingCount,
     reportPath,
     sarifPath,
   };
