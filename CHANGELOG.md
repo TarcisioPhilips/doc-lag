@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Docs-sync validation corpus: `validation/docs-sync/` cases (≥10 public repos + synthetic fixtures), replay script, committed results, and precision report
+- Docs-sync validation corpus: `validation/docs-sync/` cases (≥10 public repos + synthetic fixtures), replay script, committed results, and precision report; dogfood config ignores `validation/**` (fixture bait strings)
 - Docs-sync mention index: bold tokens (`**name**` / `__name__`) count as structured mentions for MCP tools and Action inputs/outputs (and related kinds)
 - Dogfood docs-sync on this repository: root `doc-lag.config.json` (`enforce: false`), CI `pull_request` types include `labeled`/`unlabeled`, and JSON Schema `schema/doc-lag.config.schema.json` for editor autocomplete
 - Docs-sync Jev exclusion + caps/perf: `docs.missing` findings are never sent to Jev ranking; oversized/candidate-cap truncation verified; Node 22 perf budget for 2,000 changed files
