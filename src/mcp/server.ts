@@ -76,6 +76,18 @@ const scanDiffInputSchema = {
     .describe(
       "Optional documentation exclude globs. When set, replaces built-in/config exclude patterns.",
     ),
+  docs_sync: z
+    .boolean()
+    .optional()
+    .describe(
+      "Force-enable/disable the docs-sync check (docs.missing for new public surfaces / pairing rules). When omitted, config / DOC_LAG_DOCS_SYNC decide (off by default).",
+    ),
+  docs_sync_enforce: z
+    .boolean()
+    .optional()
+    .describe(
+      "When true, docs.missing findings are marked enforced (implies docs_sync). When omitted, config / DOC_LAG_DOCS_SYNC_ENFORCE decide.",
+    ),
 };
 
 const explainFindingInputSchema = {
@@ -83,7 +95,7 @@ const explainFindingInputSchema = {
     .string()
     .min(1)
     .describe(
-      "Stable finding id from scan_diff (e.g. scripts.missing:README.md:1:deploy:preview).",
+      "Stable finding id from scan_diff (e.g. scripts.missing:README.md:1:deploy:preview or docs.missing:cli.flag:--foo@src/cli.ts).",
     ),
   ...scanDiffInputSchema,
 };
@@ -133,11 +145,13 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
     {
       title: "Scan documentation drift",
       description:
-        "Scan a git range for documentation made stale by the change (scripts.missing, links.broken, env.stale). " +
+        "Scan a git range for documentation made stale by the change (scripts.missing, links.broken, env.stale) " +
+        "and, when docs_sync is enabled, missing docs for new public surfaces (docs.missing). " +
         "Read-only: never executes commands from docs and never writes to the repo. " +
         "Default is offline and deterministic. Optional rank=jev reorders needs-review findings via TypeSafe AI " +
         "(requires TYPESAFE_API_KEY; privacy: diff + doc text leave the machine). " +
-        "Defaults base to merge-base with main and head to HEAD; set include_working_tree to include uncommitted edits.",
+        "Defaults base to merge-base with main and head to HEAD; set include_working_tree to include uncommitted edits. " +
+        "Pass docs_sync: true before finishing agent work when the repo uses docs-sync; response text includes Action items for docs.missing.",
       inputSchema: scanDiffInputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
@@ -149,7 +163,7 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
     {
       title: "Explain a finding",
       description:
-        "Re-scan the same range and return one finding by stable id with full evidence and suggested action. Read-only and offline.",
+        "Re-scan the same range and return one finding by stable id (including docs.missing) with full evidence and suggested action. Read-only and offline. Accepts the same docs_sync / docs_sync_enforce params as scan_diff.",
       inputSchema: explainFindingInputSchema,
       annotations: LOCAL_ONLY_ANNOTATIONS,
     },
@@ -161,7 +175,7 @@ export function createDocLagMcpServer(options: CreateDocLagMcpServerOptions): Mc
     {
       title: "List doc-lag rules",
       description:
-        "List deterministic documentation-drift rules available in the scan pipeline.",
+        "List deterministic documentation-drift rules (including docs.missing) and docs-sync detectors available in the scan pipeline.",
       inputSchema: {},
       annotations: LOCAL_ONLY_ANNOTATIONS,
     },

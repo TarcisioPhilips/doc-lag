@@ -67,6 +67,13 @@ describe("MCP server in-process round trip", () => {
       expect(byName.scan_diff?.annotations?.openWorldHint).toBe(true);
       expect(byName.explain_finding?.annotations?.openWorldHint).toBe(false);
       expect(byName.list_rules?.annotations?.openWorldHint).toBe(false);
+      expect(byName.scan_diff?.description).toMatch(/docs\.missing/);
+      expect(byName.scan_diff?.description).toMatch(/docs_sync/);
+      const scanSchema = byName.scan_diff?.inputSchema as {
+        properties?: Record<string, unknown>;
+      };
+      expect(scanSchema?.properties).toHaveProperty("docs_sync");
+      expect(scanSchema?.properties).toHaveProperty("docs_sync_enforce");
     });
   });
 
@@ -120,8 +127,13 @@ describe("MCP server in-process round trip", () => {
 
       const rules = await client.callTool({ name: "list_rules", arguments: {} });
       expect(rules.isError).toBeFalsy();
-      const rulesData = rules.structuredContent as { rules: Array<{ id: string }> };
+      const rulesData = rules.structuredContent as {
+        rules: Array<{ id: string }>;
+        detectors: Array<{ id: string; defaultEnabled: boolean }>;
+      };
       expect(rulesData.rules.map((rule) => rule.id)).toContain("links.broken");
+      expect(rulesData.rules.map((rule) => rule.id)).toContain("docs.missing");
+      expect(rulesData.detectors.some((d) => d.id === "cli.flag" && d.defaultEnabled)).toBe(true);
     });
   });
 
@@ -181,12 +193,17 @@ describe("MCP server stdio round trip", () => {
 
       const result = await client.callTool({ name: "list_rules", arguments: {} });
       expect(result.isError).toBeFalsy();
-      const data = result.structuredContent as { rules: Array<{ id: string }> };
+      const data = result.structuredContent as {
+        rules: Array<{ id: string }>;
+        detectors: Array<{ id: string }>;
+      };
       expect(data.rules.map((rule) => rule.id)).toEqual([
         "scripts.missing",
         "links.broken",
         "env.stale",
+        "docs.missing",
       ]);
+      expect(data.detectors.map((d) => d.id)).toContain("mcp.tool");
     } finally {
       await client.close();
     }

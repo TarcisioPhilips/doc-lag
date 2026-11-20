@@ -246,13 +246,157 @@ describe("MCP handlers", () => {
     expect(result.data.error).toMatch(/Invalid git ref|failed/i);
   });
 
-  it("list_rules returns the three shipped rules", async () => {
+  it("list_rules returns shipped rules including docs.missing plus detectors", async () => {
     const result = handleListRules();
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const ids = result.data.rules.map((rule) => rule.id);
-    expect(ids).toEqual(["scripts.missing", "links.broken", "env.stale"]);
-    expect(result.text).toContain("scripts.missing");
+    expect(ids).toEqual([
+      "scripts.missing",
+      "links.broken",
+      "env.stale",
+      "docs.missing",
+    ]);
+    expect(result.data.rules.find((r) => r.id === "docs.missing")?.statuses).toEqual([
+      "needs-review",
+    ]);
+    expect(result.data.detectors.map((d) => d.id)).toEqual([
+      "action.input",
+      "action.output",
+      "package.bin",
+      "package.exports",
+      "cli.flag",
+      "cli.command",
+      "mcp.tool",
+      "env.added",
+    ]);
+    expect(result.data.detectors.find((d) => d.id === "env.added")?.defaultEnabled).toBe(false);
+    expect(result.data.detectors.find((d) => d.id === "cli.flag")?.defaultEnabled).toBe(true);
+    expect(result.text).toContain("docs.missing");
+    expect(result.text).toContain("cli.flag");
+  });
+
+  it("scan_diff docs_sync + Action items block; off by default is unchanged", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "console.log('hi');\n",
+        },
+        headFiles: {
+          "src/cli/main.ts": "console.log('hi');\nconsole.log('bye');\n",
+        },
+      }),
+    );
+    writeFileSync(
+      path.join(fixture.repo, "doc-lag.config.json"),
+      JSON.stringify({
+        docsSync: {
+          rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+        },
+      }),
+    );
+
+    const withSync = await handleScanDiff(
+      { workspaceRoot: fixture.repo },
+      { base: fixture.base, head: fixture.head, docs_sync: true },
+    );
+    expect(withSync.ok).toBe(true);
+    if (!withSync.ok) return;
+    expect(withSync.data.findings.some((f) => f.ruleId === "docs.missing")).toBe(true);
+    expect(withSync.text).toContain("Action items for the agent");
+    expect(withSync.text).toMatch(/You changed files under rule "cli"/);
+    expect(withSync.text).toContain("Update README.md");
+
+    const forcedOff = await handleScanDiff(
+      { workspaceRoot: fixture.repo },
+      { base: fixture.base, head: fixture.head, docs_sync: false },
+    );
+    expect(forcedOff.ok).toBe(true);
+    if (!forcedOff.ok) return;
+    expect(forcedOff.data.docsSync).toBeUndefined();
+    expect(forcedOff.data.findings.some((f) => f.ruleId === "docs.missing")).toBe(false);
+    expect(forcedOff.text).not.toContain("Action items for the agent");
+  });
+
+  it("scan_diff Action items for detector findings; explain_finding resolves docs.missing", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# cli\n",
+          "src/cli.ts": `import { Command } from "commander";
+new Command().option("--verbose", "v");
+`,
+        },
+        headFiles: {
+          "src/cli.ts": `import { Command } from "commander";
+new Command().option("--verbose", "v").option("--docs-sync", "enable docs sync");
+`,
+        },
+      }),
+    );
+
+    const scanned = await handleScanDiff(
+      { workspaceRoot: fixture.repo },
+      { base: fixture.base, head: fixture.head, docs_sync: true },
+    );
+    expect(scanned.ok).toBe(true);
+    if (!scanned.ok) return;
+    const missing = scanned.data.findings.find((f) =>
+      f.id.includes("docs.missing:cli.flag:--docs-sync"),
+    );
+    expect(missing).toBeDefined();
+    expect(scanned.text).toContain("Action items for the agent");
+    expect(scanned.text).toMatch(/You added CLI flag `--docs-sync`/);
+    expect(scanned.text).toContain("before finishing");
+
+    const explained = handleExplainFinding(
+      { workspaceRoot: fixture.repo },
+      {
+        finding_id: missing!.id,
+        base: fixture.base,
+        head: fixture.head,
+        docs_sync: true,
+      },
+    );
+    expect(explained.ok).toBe(true);
+    if (!explained.ok) return;
+    expect(explained.data.finding.ruleId).toBe("docs.missing");
+    expect(explained.data.finding.surface?.kind).toBe("cli.flag");
+    expect(explained.text).toContain("Suggested action:");
+  });
+
+  it("docs_sync_enforce marks Finding.enforced", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "console.log('hi');\n",
+        },
+        headFiles: {
+          "src/cli/main.ts": "console.log('hi');\nconsole.log('bye');\n",
+        },
+      }),
+    );
+    writeFileSync(
+      path.join(fixture.repo, "doc-lag.config.json"),
+      JSON.stringify({
+        docsSync: {
+          rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+        },
+      }),
+    );
+
+    const result = await handleScanDiff(
+      { workspaceRoot: fixture.repo },
+      { base: fixture.base, head: fixture.head, docs_sync_enforce: true },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const missing = result.data.findings.filter((f) => f.ruleId === "docs.missing");
+    expect(missing.length).toBeGreaterThan(0);
+    expect(missing.every((f) => f.enforced === true)).toBe(true);
+    expect(result.data.docsSync?.enforced).toBe(true);
   });
 });
 

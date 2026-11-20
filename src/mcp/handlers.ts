@@ -2,11 +2,18 @@ import { resolveDefaultBase } from "../core/default-base.js";
 import { constrainToRoot } from "../core/paths.js";
 import { scan } from "../core/scan.js";
 import { scanWithRanking } from "../core/scan-with-ranking.js";
+import { KIND_LABELS } from "../docs-sync/detectors/types.js";
+import type { SurfaceKind } from "../core/docs-sync-config.js";
 import { ScanError } from "../errors.js";
 import { parseRankProvider } from "../ranking/jev-rank.js";
 import { formatText } from "../reporters/text.js";
 import type { Finding, RankProvider, ScanReport } from "../types.js";
-import { listRules, type RuleInfo } from "./rules.js";
+import {
+  listDetectors,
+  listRules,
+  type DetectorInfo,
+  type RuleInfo,
+} from "./rules.js";
 
 export interface McpHandlerContext {
   /** Workspace root used to constrain `cwd` arguments. */
@@ -31,6 +38,15 @@ export interface ScanDiffInput {
   docs_include?: string[];
   /** Optional docs exclude globs (replaces defaults/config when set). */
   docs_exclude?: string[];
+  /**
+   * Force-enable/disable docs-sync (overrides config / DOC_LAG_DOCS_SYNC).
+   * When omitted, config/env decide.
+   */
+  docs_sync?: boolean;
+  /**
+   * Force docs-sync enforce for this run (implies enable when docs_sync omitted).
+   */
+  docs_sync_enforce?: boolean;
 }
 
 export interface ExplainFindingInput {
@@ -42,6 +58,8 @@ export interface ExplainFindingInput {
   config?: string;
   docs_include?: string[];
   docs_exclude?: string[];
+  docs_sync?: boolean;
+  docs_sync_enforce?: boolean;
 }
 
 export interface ToolSuccess<T> {
@@ -82,6 +100,18 @@ function resolveDocsOverrides(input: {
   };
 }
 
+function resolveDocsSyncFlags(input: {
+  docs_sync?: boolean;
+  docs_sync_enforce?: boolean;
+}): { docsSyncEnabled?: boolean; docsSyncEnforce?: boolean } {
+  let docsSyncEnabled = input.docs_sync;
+  const docsSyncEnforce = input.docs_sync_enforce;
+  if (docsSyncEnforce === true && docsSyncEnabled === undefined) {
+    docsSyncEnabled = true;
+  }
+  return { docsSyncEnabled, docsSyncEnforce };
+}
+
 function resolveScanOptions(
   ctx: McpHandlerContext,
   input: {
@@ -92,6 +122,8 @@ function resolveScanOptions(
     config?: string;
     docs_include?: string[];
     docs_exclude?: string[];
+    docs_sync?: boolean;
+    docs_sync_enforce?: boolean;
   },
 ): {
   cwd: string;
@@ -100,6 +132,8 @@ function resolveScanOptions(
   includeWorkingTree: boolean;
   configPath?: string;
   docs?: { include?: string[]; exclude?: string[] };
+  docsSyncEnabled?: boolean;
+  docsSyncEnforce?: boolean;
 } {
   const cwd = resolveScanCwd(ctx, input.cwd);
   const includeWorkingTree = Boolean(input.include_working_tree);
@@ -112,7 +146,61 @@ function resolveScanOptions(
   }
   const base = input.base?.trim() || resolveDefaultBase(cwd, head);
   const docsOverrides = resolveDocsOverrides(input);
-  return { cwd, base, head, includeWorkingTree, ...docsOverrides };
+  const docsSyncFlags = resolveDocsSyncFlags(input);
+  return {
+    cwd,
+    base,
+    head,
+    includeWorkingTree,
+    ...docsOverrides,
+    ...docsSyncFlags,
+  };
+}
+
+function kindLabel(kind: string | undefined): string {
+  if (!kind) {
+    return "surface";
+  }
+  if (kind in KIND_LABELS) {
+    return KIND_LABELS[kind as SurfaceKind];
+  }
+  return kind;
+}
+
+/**
+ * One actionable line per docs.missing finding for coding agents.
+ */
+export function formatDocsMissingActionItems(findings: Finding[]): string[] {
+  const missing = findings.filter((f) => f.ruleId === "docs.missing");
+  if (missing.length === 0) {
+    return [];
+  }
+  const lines: string[] = ["", "Action items for the agent:"];
+  for (const finding of missing) {
+    const surface = finding.surface;
+    const docPath = finding.documentation.path;
+    const docLine = finding.documentation.line;
+    if (surface?.trigger === "detector") {
+      const label = kindLabel(surface.kind);
+      const name = surface.name ?? finding.id;
+      const source = surface.source
+        ? `${surface.source.path}:${surface.source.line}`
+        : finding.change.path;
+      lines.push(
+        `- You added ${label} \`${name}\` in ${source}. Update ${docPath} near line ${docLine} before finishing.`,
+      );
+    } else if (surface?.trigger === "rule") {
+      const ruleName = surface.rule ?? "unknown";
+      const matched =
+        surface.matchedFiles?.[0] ?? finding.change.path;
+      lines.push(
+        `- You changed files under rule "${ruleName}" (${matched}). Update ${docPath}.`,
+      );
+    } else {
+      lines.push(`- ${finding.suggestion}`);
+    }
+  }
+  return lines;
 }
 
 function conciseScanText(report: ScanReport): string {
@@ -130,6 +218,7 @@ function conciseScanText(report: ScanReport): string {
   if (report.findings.length > 10) {
     lines.push(`… and ${report.findings.length - 10} more. Use explain_finding for details.`);
   }
+  lines.push(...formatDocsMissingActionItems(report.findings));
   return lines.join("\n");
 }
 
@@ -171,6 +260,8 @@ export async function handleScanDiff(
       warn: ctx.warn,
       configPath: options.configPath,
       docs: options.docs,
+      docsSyncEnabled: options.docsSyncEnabled,
+      docsSyncEnforce: options.docsSyncEnforce,
     });
     return {
       ok: true,
@@ -211,6 +302,10 @@ export function handleExplainFinding(
       includeWorkingTree: options.includeWorkingTree,
       configPath: options.configPath,
       docs: options.docs,
+      docsSyncEnabled: options.docsSyncEnabled,
+      docsSyncEnforce: options.docsSyncEnforce,
+      env: ctx.env,
+      warn: ctx.warn,
     });
     const finding = report.findings.find((item) => item.id === findingId);
     if (!finding) {
@@ -251,14 +346,22 @@ export function handleExplainFinding(
 
 export interface ListRulesData {
   rules: RuleInfo[];
+  detectors: DetectorInfo[];
 }
 
-/** List deterministic rules available in the scan pipeline. */
+/** List deterministic rules and docs-sync detectors available in the scan pipeline. */
 export function handleListRules(): ToolResult<ListRulesData> {
   const rules = listRules();
+  const detectors = listDetectors();
   const text = [
     `doc-lag rules (${rules.length}):`,
     ...rules.map((rule) => `- ${rule.id}: ${rule.description}`),
+    "",
+    `docs-sync detectors (${detectors.length}; opt-in via docsSync / docs_sync):`,
+    ...detectors.map(
+      (detector) =>
+        `- ${detector.id}: ${detector.title} (default ${detector.defaultEnabled ? "on" : "off"}; ${detector.languages.join(", ")})`,
+    ),
   ].join("\n");
-  return { ok: true, text, data: { rules } };
+  return { ok: true, text, data: { rules, detectors } };
 }
