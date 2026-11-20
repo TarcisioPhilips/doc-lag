@@ -75,6 +75,7 @@ export type {
 export { runDocsSync } from "./docs-sync/engine.js";
 export {
   listRegisteredDetectors,
+  REGISTERED_DETECTOR_KINDS,
   STRUCTURED_DETECTOR_KINDS,
 } from "./docs-sync/detectors/registry.js";
 export type { SurfaceDecl } from "./docs-sync/detectors/types.js";

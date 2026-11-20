@@ -25,6 +25,8 @@ export interface MentionIndex {
   hasMention(options: {
     kind: SurfaceKind;
     name: string;
+    /** Optional aliases that also satisfy the mention (e.g. --color for --no-color). */
+    aliases?: string[];
     /** Optional restriction globs; undefined = all indexed docs. */
     docsGlobs?: string[];
   }): boolean;
@@ -32,6 +34,7 @@ export interface MentionIndex {
   firstMention(options: {
     kind: SurfaceKind;
     name: string;
+    aliases?: string[];
     docsGlobs?: string[];
   }): MentionHit | undefined;
   /** Count mentions of names in allowed contexts, per doc. */
@@ -212,21 +215,38 @@ export function buildMentionIndex(options: {
       }
     }
 
+    if (kind === "cli.flag") {
+      // `--name` not preceded/followed by word or `-` chars.
+      const pattern = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`);
+      return pattern.test(text);
+    }
+
     // Whole word; `-` counts as a word character.
     const pattern = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`);
     return pattern.test(text);
   }
 
+  function anyNameMatches(
+    kind: SurfaceKind,
+    names: string[],
+    text: string,
+    context: MentionContext,
+  ): boolean {
+    return names.some((name) => nameMatches(kind, name, text, context));
+  }
+
   return {
     docPaths,
-    hasMention({ kind, name, docsGlobs }) {
+    hasMention({ kind, name, aliases, docsGlobs }) {
+      const names = [name, ...(aliases ?? [])];
       return filterSpans(kind, docsGlobs).some((span) =>
-        nameMatches(kind, name, span.text, span.context),
+        anyNameMatches(kind, names, span.text, span.context),
       );
     },
-    firstMention({ kind, name, docsGlobs }) {
+    firstMention({ kind, name, aliases, docsGlobs }) {
+      const names = [name, ...(aliases ?? [])];
       const hit = filterSpans(kind, docsGlobs).find((span) =>
-        nameMatches(kind, name, span.text, span.context),
+        anyNameMatches(kind, names, span.text, span.context),
       );
       if (!hit) {
         return undefined;

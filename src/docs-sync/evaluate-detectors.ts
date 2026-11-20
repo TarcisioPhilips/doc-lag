@@ -3,7 +3,10 @@ import type { DocsSyncConfig, SurfaceKind } from "../core/docs-sync-config.js";
 import { listDocumentationFiles } from "../core/docs.js";
 import type { DocsDiscoveryOptions, Finding } from "../types.js";
 import { matchesAnyGlob, matchesGlob, normalizeRepoPath } from "./match.js";
-import { runRegisteredDetectors } from "./detectors/registry.js";
+import {
+  isRegisteredDetectorKind,
+  runRegisteredDetectors,
+} from "./detectors/registry.js";
 import { KIND_LABELS, type SurfaceDecl } from "./detectors/types.js";
 import { buildMentionIndex, type MentionIndex } from "./mention-index.js";
 
@@ -244,27 +247,21 @@ export function evaluateDetectorFindings(options: {
     (kind) => options.config.detectors[kind].enabled,
   );
 
-  // Only kinds that have a registered structured detector produce surfaces here.
-  const structuredEnabled = enabledKinds.filter(
-    (kind) =>
-      kind === "action.input" ||
-      kind === "action.output" ||
-      kind === "package.bin" ||
-      kind === "package.exports",
-  );
+  // Only kinds with a registered detector produce surfaces here.
+  const registeredEnabled = enabledKinds.filter(isRegisteredDetectorKind);
 
-  if (structuredEnabled.length === 0) {
+  if (registeredEnabled.length === 0) {
     return { findings: [], newSurfaces: 0, warnings };
   }
 
   const basePaths = filterPathsForKinds(
     options.baseSidePaths,
-    structuredEnabled,
+    registeredEnabled,
     options.config,
   );
   const headPaths = filterPathsForKinds(
     options.headSidePaths,
-    structuredEnabled,
+    registeredEnabled,
     options.config,
   );
 
@@ -272,14 +269,14 @@ export function evaluateDetectorFindings(options: {
     cwd: options.cwd,
     ref: options.effectiveBase,
     paths: basePaths,
-    enabledKinds: structuredEnabled,
+    enabledKinds: registeredEnabled,
     warn,
   });
   const headSurfaces = collectSurfaces({
     cwd: options.cwd,
     ref: options.head,
     paths: headPaths,
-    enabledKinds: structuredEnabled,
+    enabledKinds: registeredEnabled,
     warn,
   });
 
@@ -323,6 +320,7 @@ export function evaluateDetectorFindings(options: {
       index.hasMention({
         kind: surface.kind,
         name: surface.name,
+        aliases: surface.mentionNames?.filter((n) => n !== surface.name),
         docsGlobs: detectorDocs,
       })
     ) {

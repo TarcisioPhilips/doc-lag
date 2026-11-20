@@ -1,9 +1,21 @@
 import type { SurfaceKind } from "../../core/docs-sync-config.js";
 import { detectActionSurfaces } from "./action-yml.js";
+import { detectCliCommands } from "./cli-commands.js";
+import { detectCliFlags } from "./cli-flags.js";
 import { detectPackageSurfaces } from "./package-json.js";
 import type { DetectorRegistration, SurfaceDecl } from "./types.js";
 
-/** Detectors implemented in this step (structured files only). */
+/** Detectors implemented so far (structured + CLI). */
+export const REGISTERED_DETECTOR_KINDS = [
+  "action.input",
+  "action.output",
+  "package.bin",
+  "package.exports",
+  "cli.flag",
+  "cli.command",
+] as const satisfies readonly SurfaceKind[];
+
+/** @deprecated Use REGISTERED_DETECTOR_KINDS */
 export const STRUCTURED_DETECTOR_KINDS = [
   "action.input",
   "action.output",
@@ -14,7 +26,7 @@ export const STRUCTURED_DETECTOR_KINDS = [
 export type StructuredDetectorKind = (typeof STRUCTURED_DETECTOR_KINDS)[number];
 
 /**
- * Registry of implemented detectors. CLI/MCP/env detectors register in later tasks.
+ * Registry of implemented detectors. MCP/env detectors register in later tasks.
  */
 export function listRegisteredDetectors(): DetectorRegistration[] {
   return [
@@ -42,6 +54,14 @@ export function listRegisteredDetectors(): DetectorRegistration[] {
           (s) => s.kind === "package.exports",
         ),
     },
+    {
+      kind: "cli.flag",
+      detect: (path, content) => detectCliFlags(path, content),
+    },
+    {
+      kind: "cli.command",
+      detect: (path, content) => detectCliCommands(path, content),
+    },
   ];
 }
 
@@ -53,7 +73,7 @@ export function runRegisteredDetectors(options: {
 }): SurfaceDecl[] {
   const enabled = new Set(options.kinds);
   const out: SurfaceDecl[] = [];
-  // Run structured extractors once per file when any related kind is enabled.
+
   if (enabled.has("action.input") || enabled.has("action.output")) {
     for (const surface of detectActionSurfaces(options.path, options.content, {
       warn: options.warn,
@@ -73,7 +93,17 @@ export function runRegisteredDetectors(options: {
       }
     }
   }
+  if (enabled.has("cli.flag")) {
+    out.push(...detectCliFlags(options.path, options.content));
+  }
+  if (enabled.has("cli.command")) {
+    out.push(...detectCliCommands(options.path, options.content));
+  }
   return out;
+}
+
+export function isRegisteredDetectorKind(kind: SurfaceKind): boolean {
+  return (REGISTERED_DETECTOR_KINDS as readonly string[]).includes(kind);
 }
 
 export function isStructuredDetectorKind(kind: SurfaceKind): boolean {
