@@ -49,7 +49,7 @@ function enabledDetectors(config: DocsSyncConfig): string[] {
  * Run the docs-sync check. When disabled, returns no info and no findings
  * so the scan report stays byte-identical to pre-docsSync output.
  *
- * Structured + CLI + MCP detectors and pairing rules run here; env detector lands later.
+ * Structured + CLI + MCP + env detectors and pairing rules run here.
  */
 export function runDocsSync(options: DocsSyncEngineOptions): DocsSyncEngineResult {
   const config = resolveDocsSyncConfig(options.cwd, {

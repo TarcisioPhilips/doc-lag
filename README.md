@@ -245,8 +245,9 @@ Docs-sync is **off by default**. When enabled, it can flag:
 - **Structured surfaces** — new GitHub Action inputs/outputs or `package.json` `bin` / (opt-in) `exports` not mentioned in docs
 - **CLI surfaces** — new commander / argparse / click flags and commands not mentioned in docs
 - **MCP surfaces** — new MCP tools (`registerTool` / `.tool` / FastMCP `@x.tool`) not mentioned in docs
+- **Env surfaces** (opt-in) — new keys in `.env.example`-family files not mentioned in docs (`detectors.env.added: true`)
 
-Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action). Env detector lands in a follow-up.
+Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action).
 
 ### Exit codes
 
