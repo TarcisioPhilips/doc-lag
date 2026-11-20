@@ -2,10 +2,11 @@ import type { SurfaceKind } from "../../core/docs-sync-config.js";
 import { detectActionSurfaces } from "./action-yml.js";
 import { detectCliCommands } from "./cli-commands.js";
 import { detectCliFlags } from "./cli-flags.js";
+import { detectMcpTools } from "./mcp-tools.js";
 import { detectPackageSurfaces } from "./package-json.js";
 import type { DetectorRegistration, SurfaceDecl } from "./types.js";
 
-/** Detectors implemented so far (structured + CLI). */
+/** Detectors implemented so far (structured + CLI + MCP). */
 export const REGISTERED_DETECTOR_KINDS = [
   "action.input",
   "action.output",
@@ -13,6 +14,7 @@ export const REGISTERED_DETECTOR_KINDS = [
   "package.exports",
   "cli.flag",
   "cli.command",
+  "mcp.tool",
 ] as const satisfies readonly SurfaceKind[];
 
 /** @deprecated Use REGISTERED_DETECTOR_KINDS */
@@ -26,7 +28,7 @@ export const STRUCTURED_DETECTOR_KINDS = [
 export type StructuredDetectorKind = (typeof STRUCTURED_DETECTOR_KINDS)[number];
 
 /**
- * Registry of implemented detectors. MCP/env detectors register in later tasks.
+ * Registry of implemented detectors. Env detector registers in a later task.
  */
 export function listRegisteredDetectors(): DetectorRegistration[] {
   return [
@@ -61,6 +63,10 @@ export function listRegisteredDetectors(): DetectorRegistration[] {
     {
       kind: "cli.command",
       detect: (path, content) => detectCliCommands(path, content),
+    },
+    {
+      kind: "mcp.tool",
+      detect: (path, content) => detectMcpTools(path, content),
     },
   ];
 }
@@ -98,6 +104,9 @@ export function runRegisteredDetectors(options: {
   }
   if (enabled.has("cli.command")) {
     out.push(...detectCliCommands(options.path, options.content));
+  }
+  if (enabled.has("mcp.tool")) {
+    out.push(...detectMcpTools(options.path, options.content));
   }
   return out;
 }
