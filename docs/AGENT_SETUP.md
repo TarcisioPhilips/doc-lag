@@ -161,11 +161,13 @@ args = ["-y", "doc-lag", "mcp"]
 
 | Tool | Purpose |
 | --- | --- |
-| `scan_diff` | Scan a git range (default merge-base with main → `HEAD`). `include_working_tree: true` includes uncommitted edits. |
-| `explain_finding` | Re-scan and return one finding by stable id. |
-| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
+| `scan_diff` | Scan a git range (default merge-base with main → `HEAD`). `include_working_tree: true` includes uncommitted edits. Optional `docs_sync` / `docs_sync_enforce` for the missing-docs check. |
+| `explain_finding` | Re-scan and return one finding by stable id (including `docs.missing`). Same `docs_sync` params as `scan_diff`. |
+| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`, `docs.missing`, plus docs-sync detectors. |
 
 All tools are read-only. Do not pass `rank: "jev"` unless the user asked.
+
+Before finishing agent work on a repo that uses docs-sync (or when you want the check), call `scan_diff` with `docs_sync: true`. When `docs.missing` findings exist, the tool text includes an **Action items for the agent** block — follow those lines (document the surface or skip with a `Docs-Not-Needed: <reason>` trailer) before considering the task done.
 
 ---
 
@@ -209,6 +211,8 @@ npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-o
 Optional ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is available in **0.3.0+**. Only enable it when the user asks; it requires `TYPESAFE_API_KEY` and sends diff summaries + doc excerpts to `https://api.typesafe.ai`. Prefer `npx doc-lag` and Action `uses: TarcisioPhilips/doc-lag@v0`.
 
 Optional docs discovery: `doc-lag.config.json`, `--docs-include` / `--docs-exclude`, Action `docs-include` / `docs-exclude`, MCP `docs_include` / `docs_exclude`. See README **What counts as documentation**.
+
+Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config, CLI `--docs-sync`, Action `docs-sync`, or MCP `docs_sync: true`.
 
 ---
 

@@ -395,9 +395,9 @@ All tools are annotated read-only; paths are constrained to the workspace.
 
 | Tool | Purpose |
 | --- | --- |
-| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` for uncommitted edits. Optional `rank: "jev"` (**since 0.3.0**). |
-| `explain_finding` | Re-scan and return one finding by stable id with full evidence. |
-| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`. |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`). Set `include_working_tree: true` for uncommitted edits. Optional `rank: "jev"` (**since 0.3.0**). Optional `docs_sync` / `docs_sync_enforce` for `docs.missing` (Action items text when findings exist). |
+| `explain_finding` | Re-scan and return one finding by stable id (including `docs.missing`) with full evidence. |
+| `list_rules` | List `scripts.missing`, `links.broken`, `env.stale`, `docs.missing`, plus docs-sync detectors. |
 
 ---
 
