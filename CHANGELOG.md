@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Docs-sync Action/reporter surfacing: sticky comment + job summary **Missing documentation** section, SARIF locations at declaration sites, Action inputs `docs-sync` / `docs-sync-enforce` / `docs-sync-skip-labels`, output `docs-missing-count`, and PR label skip from the event payload
 - Docs-sync opt-in `env.added` detector for new keys in `.env.example`-family files (reuses env extractors; off by default)
 - Docs-sync MCP surface detector for `mcp.tool` (TS/JS `@modelcontextprotocol/sdk` `registerTool` / `tool`, Python FastMCP `@x.tool`) with underscore-name skipping
 - Docs-sync CLI surface detectors for `cli.flag` / `cli.command` (commander, argparse, click) with comment stripping, hidden/suppressed handling, and negation mention matching

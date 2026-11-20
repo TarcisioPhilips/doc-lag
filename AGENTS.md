@@ -23,7 +23,7 @@ npx -y -p doc-lag doc-lag-mcp
 
 Docs in scope by default: root `README`/`AGENTS`/`CLAUDE`/`CONTRIBUTING`, `docs/**`, common site/monorepo paths, `.md` + `.mdx`. Configure with `doc-lag.config.json` or `--docs-include` / `--docs-exclude`. Planned: OpenAPI/Swagger and reStructuredText support.
 
-Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config or `--docs-sync`. Pairing rules plus detectors for Action inputs/outputs, package bins, CLI flags/commands, MCP tools, and (opt-in) env keys. Skip with commit trailer `Docs-Not-Needed: <reason>` (or the `no-docs-needed` PR label in Action).
+Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config or `--docs-sync` / Action `docs-sync`. Pairing rules plus detectors for Action inputs/outputs, package bins, CLI flags/commands, MCP tools, and (opt-in) env keys. Skip with commit trailer `Docs-Not-Needed: <reason>` or the `no-docs-needed` PR label (Action reads labels from the event; use `labeled`/`unlabeled` workflow types).
 
 Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (requires `TYPESAFE_API_KEY`; sends diff/doc excerpts to a third party).
 

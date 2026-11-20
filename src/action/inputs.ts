@@ -1,4 +1,5 @@
 import { parseGlobList } from "../core/docs-config.js";
+import { parseDocsSyncBoolean } from "../core/docs-sync-config.js";
 import type { FailOn, RankProvider } from "../types.js";
 
 export interface ActionInputs {
@@ -18,12 +19,23 @@ export interface ActionInputs {
   docsInclude?: string[];
   /** Optional docs exclude globs (replaces defaults/config when set). */
   docsExclude?: string[];
+  /**
+   * Force-enable/disable docs-sync. `undefined` when the Action input is empty
+   * so config / env win.
+   */
+  docsSync?: boolean;
+  /** Force docs-sync enforce. `undefined` when unset. */
+  docsSyncEnforce?: boolean;
+  /** Replace docsSync.skipLabels when set. */
+  docsSyncSkipLabels?: string[];
 }
 
 export interface ActionOutputs {
   findingsCount: number;
   confirmedCount: number;
   needsReviewCount: number;
+  /** Count of `docs.missing` findings (0 when disabled/skipped). */
+  docsMissingCount: number;
   reportPath: string;
   sarifPath: string;
 }
@@ -71,6 +83,16 @@ function parseRank(raw: string | undefined): RankProvider {
  * Parse composite-action inputs from environment variables set in action.yml.
  */
 export function parseActionInputs(env: NodeJS.ProcessEnv = process.env): ActionInputs {
+  let docsSync = parseDocsSyncBoolean(env.DOC_LAG_DOCS_SYNC, "docs-sync");
+  const docsSyncEnforce = parseDocsSyncBoolean(
+    env.DOC_LAG_DOCS_SYNC_ENFORCE,
+    "docs-sync-enforce",
+  );
+  // Enforce implies enable when docs-sync input was left unset (same as CLI).
+  if (docsSyncEnforce === true && docsSync === undefined) {
+    docsSync = true;
+  }
+
   return {
     failOn: parseFailOn(readEnv("DOC_LAG_FAIL_ON", env)),
     comment: parseBoolean(readEnv("DOC_LAG_COMMENT", env), true),
@@ -82,6 +104,9 @@ export function parseActionInputs(env: NodeJS.ProcessEnv = process.env): ActionI
     config: readEnv("DOC_LAG_CONFIG", env),
     docsInclude: parseGlobList(readEnv("DOC_LAG_DOCS_INCLUDE", env)),
     docsExclude: parseGlobList(readEnv("DOC_LAG_DOCS_EXCLUDE", env)),
+    docsSync,
+    docsSyncEnforce,
+    docsSyncSkipLabels: parseGlobList(readEnv("DOC_LAG_DOCS_SYNC_SKIP_LABELS", env)),
   };
 }
 
@@ -104,11 +129,37 @@ interface PullRequestEventPayload {
     number?: number;
     base?: { sha?: string };
     head?: { sha?: string };
+    labels?: Array<{ name?: string }>;
   };
   repository?: {
     name?: string;
     owner?: { login?: string };
   };
+}
+
+/**
+ * Read PR label names from `GITHUB_EVENT_PATH` payload (no API call).
+ * Empty on non-PR events or when labels are absent.
+ */
+export function extractPullRequestLabels(payload: unknown): string[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+  const body = payload as PullRequestEventPayload;
+  const labels = body.pull_request?.labels;
+  if (!Array.isArray(labels)) {
+    return [];
+  }
+  const names: string[] = [];
+  for (const label of labels) {
+    if (label && typeof label.name === "string") {
+      const trimmed = label.name.trim();
+      if (trimmed !== "") {
+        names.push(trimmed);
+      }
+    }
+  }
+  return names;
 }
 
 /**
@@ -172,6 +223,7 @@ export function formatGithubOutputs(outputs: ActionOutputs): string {
     `findings-count=${outputs.findingsCount}`,
     `confirmed-count=${outputs.confirmedCount}`,
     `needs-review-count=${outputs.needsReviewCount}`,
+    `docs-missing-count=${outputs.docsMissingCount}`,
     `report-path=${outputs.reportPath}`,
     `sarif-path=${outputs.sarifPath}`,
   ].join("\n");

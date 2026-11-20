@@ -1,8 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  extractPullRequestLabels,
   formatGithubOutputs,
   parseActionInputs,
   parseGithubEvent,
@@ -50,6 +51,9 @@ describe("action inputs and outputs", () => {
       config: undefined,
       docsInclude: undefined,
       docsExclude: undefined,
+      docsSync: undefined,
+      docsSyncEnforce: undefined,
+      docsSyncSkipLabels: undefined,
     });
     expect(
       parseActionInputs({
@@ -63,6 +67,9 @@ describe("action inputs and outputs", () => {
         DOC_LAG_CONFIG: "doc-lag.config.json",
         DOC_LAG_DOCS_INCLUDE: "README.md, docs/**/*.mdx",
         DOC_LAG_DOCS_EXCLUDE: "**/CHANGELOG.md",
+        DOC_LAG_DOCS_SYNC: "true",
+        DOC_LAG_DOCS_SYNC_ENFORCE: "false",
+        DOC_LAG_DOCS_SYNC_SKIP_LABELS: "no-docs-needed, skip-docs",
       }),
     ).toEqual({
       failOn: "none",
@@ -75,6 +82,23 @@ describe("action inputs and outputs", () => {
       config: "doc-lag.config.json",
       docsInclude: ["README.md", "docs/**/*.mdx"],
       docsExclude: ["**/CHANGELOG.md"],
+      docsSync: true,
+      docsSyncEnforce: false,
+      docsSyncSkipLabels: ["no-docs-needed", "skip-docs"],
+    });
+  });
+
+  it("treats empty docs-sync inputs as unset (config wins)", () => {
+    expect(
+      parseActionInputs({
+        DOC_LAG_DOCS_SYNC: "",
+        DOC_LAG_DOCS_SYNC_ENFORCE: "   ",
+        DOC_LAG_DOCS_SYNC_SKIP_LABELS: "",
+      }),
+    ).toMatchObject({
+      docsSync: undefined,
+      docsSyncEnforce: undefined,
+      docsSyncSkipLabels: undefined,
     });
   });
 
@@ -106,12 +130,25 @@ describe("action inputs and outputs", () => {
     ).toEqual({ base: "basesha", head: "headsha" });
   });
 
+  it("extracts PR labels from the event payload (empty on non-PR)", () => {
+    expect(
+      extractPullRequestLabels({
+        pull_request: {
+          labels: [{ name: "bug" }, { name: "no-docs-needed" }, { name: "" }, {}],
+        },
+      }),
+    ).toEqual(["bug", "no-docs-needed"]);
+    expect(extractPullRequestLabels({ push: {} })).toEqual([]);
+    expect(extractPullRequestLabels(null)).toEqual([]);
+  });
+
   it("formats GitHub Action outputs", () => {
     expect(
       formatGithubOutputs({
         findingsCount: 2,
         confirmedCount: 1,
         needsReviewCount: 1,
+        docsMissingCount: 1,
         reportPath: "/tmp/doc-lag-report.json",
         sarifPath: "/tmp/doc-lag.sarif",
       }),
@@ -120,6 +157,7 @@ describe("action inputs and outputs", () => {
         "findings-count=2",
         "confirmed-count=1",
         "needs-review-count=1",
+        "docs-missing-count=1",
         "report-path=/tmp/doc-lag-report.json",
         "sarif-path=/tmp/doc-lag.sarif",
       ].join("\n"),
@@ -216,7 +254,135 @@ describe("runAction", () => {
 
     const outputFile = readFileSync(path.join(temp, "github-output"), "utf8");
     expect(outputFile).toContain("findings-count=1");
+    expect(outputFile).toContain("docs-missing-count=0");
     expect(outputFile).toContain(`report-path=${result.outputs.reportPath}`);
+  });
+
+  it("label-skip: PR label in skipLabels skips docs-sync; docs-missing-count=0", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "console.log('hi');\n",
+        },
+        headFiles: {
+          "src/cli/main.ts": "console.log('hi');\nconsole.log('bye');\n",
+        },
+      }),
+    );
+    writeFileSync(
+      path.join(fixture.repo, "doc-lag.config.json"),
+      JSON.stringify({
+        docsSync: {
+          rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+        },
+      }),
+    );
+    const temp = mkdtempSync(path.join(tmpdir(), "doc-lag-action-"));
+    temps.push(temp);
+    let summary = "";
+
+    const result = await runAction({
+      cwd: fixture.repo,
+      env: {
+        DOC_LAG_FAIL_ON: "none",
+        DOC_LAG_COMMENT: "false",
+        DOC_LAG_SARIF: "false",
+        DOC_LAG_BASE: fixture.base,
+        DOC_LAG_HEAD: fixture.head,
+        DOC_LAG_DOCS_SYNC: "true",
+        GITHUB_EVENT_NAME: "pull_request",
+        GITHUB_REPOSITORY: "acme/app",
+        GITHUB_EVENT_PATH: path.join(temp, "event.json"),
+        GITHUB_OUTPUT: path.join(temp, "github-output"),
+        RUNNER_TEMP: temp,
+      },
+      readEventPayload: () => ({
+        pull_request: {
+          number: 5,
+          base: { sha: fixture.base },
+          head: { sha: fixture.head },
+          labels: [{ name: "no-docs-needed" }],
+        },
+        repository: { name: "app", owner: { login: "acme" } },
+      }),
+      writeOutputFile: () => undefined,
+      appendStepSummary: (markdown) => {
+        summary += markdown;
+      },
+      log: () => undefined,
+      warn: () => undefined,
+    });
+
+    expect(result.report.docsSync?.status).toBe("skipped");
+    expect(result.report.docsSync?.skipReason).toBe("label:no-docs-needed");
+    expect(result.report.findings.filter((f) => f.ruleId === "docs.missing")).toHaveLength(0);
+    expect(result.outputs.docsMissingCount).toBe(0);
+    expect(summary).toContain("Docs sync check skipped (label `no-docs-needed`).");
+    const outputFile = readFileSync(path.join(temp, "github-output"), "utf8");
+    expect(outputFile).toContain("docs-missing-count=0");
+  });
+
+  it("emits docs-missing-count when docs.missing findings exist", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "README.md": "# App\n",
+          "src/cli/main.ts": "console.log('hi');\n",
+        },
+        headFiles: {
+          "src/cli/main.ts": "console.log('hi');\nconsole.log('bye');\n",
+        },
+      }),
+    );
+    writeFileSync(
+      path.join(fixture.repo, "doc-lag.config.json"),
+      JSON.stringify({
+        docsSync: {
+          rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+        },
+      }),
+    );
+    const temp = mkdtempSync(path.join(tmpdir(), "doc-lag-action-"));
+    temps.push(temp);
+    let summary = "";
+
+    const result = await runAction({
+      cwd: fixture.repo,
+      env: {
+        DOC_LAG_FAIL_ON: "none",
+        DOC_LAG_COMMENT: "false",
+        DOC_LAG_SARIF: "false",
+        DOC_LAG_BASE: fixture.base,
+        DOC_LAG_HEAD: fixture.head,
+        GITHUB_EVENT_NAME: "pull_request",
+        GITHUB_REPOSITORY: "acme/app",
+        GITHUB_EVENT_PATH: path.join(temp, "event.json"),
+        GITHUB_OUTPUT: path.join(temp, "github-output"),
+        RUNNER_TEMP: temp,
+      },
+      readEventPayload: () => ({
+        pull_request: {
+          number: 6,
+          base: { sha: fixture.base },
+          head: { sha: fixture.head },
+          labels: [],
+        },
+        repository: { name: "app", owner: { login: "acme" } },
+      }),
+      writeOutputFile: () => undefined,
+      appendStepSummary: (markdown) => {
+        summary += markdown;
+      },
+      log: () => undefined,
+      warn: () => undefined,
+    });
+
+    expect(result.outputs.docsMissingCount).toBe(1);
+    expect(summary).toContain("### Missing documentation");
+    expect(summary).toContain("missing docs");
+    const outputFile = readFileSync(path.join(temp, "github-output"), "utf8");
+    expect(outputFile).toContain("docs-missing-count=1");
   });
 
   it("does not fail the run when sticky comment lacks permission", async () => {

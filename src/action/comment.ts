@@ -1,3 +1,5 @@
+import { KIND_LABELS } from "../docs-sync/detectors/types.js";
+import type { SurfaceKind } from "../core/docs-sync-config.js";
 import type { EvidenceItem, Finding, ScanReport } from "../types.js";
 
 /** Hidden HTML marker used to find and update the sticky PR comment. */
@@ -48,38 +50,140 @@ function formatFindingMarkdown(finding: Finding): string {
   return lines.join("\n");
 }
 
+function kindLabel(kind: string | undefined): string {
+  if (!kind) {
+    return "surface";
+  }
+  if (kind in KIND_LABELS) {
+    return KIND_LABELS[kind as SurfaceKind];
+  }
+  return kind;
+}
+
+function formatDocsMissingMarkdown(finding: Finding): string {
+  const location = `${finding.documentation.path}:${finding.documentation.line}`;
+  const status = finding.status.toUpperCase();
+  const surface = finding.surface;
+  let title: string;
+  if (surface?.trigger === "rule") {
+    const ruleName = surface.rule ?? "unknown";
+    title = `#### \`${location}\` — rule \`${ruleName}\` (${status})`;
+  } else {
+    const name = surface?.name ?? finding.id;
+    const label = kindLabel(surface?.kind);
+    title = `#### \`${location}\` — \`${name}\` (${label}, ${status})`;
+  }
+
+  const lines = [title, "", finding.message, ""];
+  if (surface?.trigger === "detector" && surface.source) {
+    lines.push(`- Declared at: \`${surface.source.path}:${surface.source.line}\``);
+  }
+  lines.push(`- Suggested fix: ${finding.suggestion}`);
+  return lines.join("\n");
+}
+
 function section(title: string, findings: Finding[]): string[] {
   if (findings.length === 0) {
     return [];
   }
-  return [`### ${title}`, "", ...findings.flatMap((f, i) => [formatFindingMarkdown(f), ...(i < findings.length - 1 ? [""] : [])]), ""];
+  return [
+    `### ${title}`,
+    "",
+    ...findings.flatMap((f, i) => [
+      formatFindingMarkdown(f),
+      ...(i < findings.length - 1 ? [""] : []),
+    ]),
+    "",
+  ];
+}
+
+function docsMissingSection(findings: Finding[], enforced: boolean): string[] {
+  if (findings.length === 0) {
+    return [];
+  }
+  const title = enforced
+    ? "Missing documentation (enforced — fails this check)"
+    : "Missing documentation";
+  return [
+    `### ${title}`,
+    "",
+    ...findings.flatMap((f, i) => [
+      formatDocsMissingMarkdown(f),
+      ...(i < findings.length - 1 ? [""] : []),
+    ]),
+    "",
+  ];
+}
+
+function formatSkipReasonLine(skipReason: string): string {
+  // skipReason is `label:<name>` or `trailer:<value>`
+  if (skipReason.startsWith("label:")) {
+    const name = skipReason.slice("label:".length);
+    return `Docs sync check skipped (label \`${name}\`).`;
+  }
+  if (skipReason.startsWith("trailer:")) {
+    const value = skipReason.slice("trailer:".length);
+    return `Docs sync check skipped (trailer \`${value}\`).`;
+  }
+  return `Docs sync check skipped (${skipReason}).`;
 }
 
 /**
  * Render the sticky PR comment body (includes the marker as the first line).
  */
 export function formatCommentBody(report: ScanReport): string {
+  const docsMissing = report.findings.filter((f) => f.ruleId === "docs.missing");
   const confirmed = report.findings.filter((f) => f.status === "confirmed");
-  const needsReview = report.findings.filter((f) => f.status === "needs-review");
+  const needsReview = report.findings.filter(
+    (f) => f.status === "needs-review" && f.ruleId !== "docs.missing",
+  );
   const unknown = report.findings.filter((f) => f.status === "unknown");
   const range = `\`${report.base}..${report.head}\``;
+
+  let summaryLine =
+    `Scanned ${range} — **${confirmed.length}** confirmed, **${needsReview.length}** needs-review`;
+  if (unknown.length > 0) {
+    summaryLine += `, **${unknown.length}** unknown`;
+  }
+  if (report.docsSync) {
+    summaryLine += `, **${docsMissing.length}** missing docs`;
+  }
+  summaryLine += ".";
 
   const lines: string[] = [
     STICKY_COMMENT_MARKER,
     "## doc-lag report",
     "",
-    `Scanned ${range} — **${confirmed.length}** confirmed, **${needsReview.length}** needs-review` +
-      (unknown.length > 0 ? `, **${unknown.length}** unknown` : "") +
-      ".",
+    summaryLine,
     "",
   ];
 
-  if (report.findings.length === 0) {
+  if (report.docsSync?.status === "skipped" && report.docsSync.skipReason) {
+    lines.push(formatSkipReasonLine(report.docsSync.skipReason), "");
+  }
+
+  const hasDriftSections =
+    confirmed.length > 0 || needsReview.length > 0 || unknown.length > 0;
+  const hasDocsMissing = docsMissing.length > 0;
+
+  if (!hasDriftSections && !hasDocsMissing && report.docsSync?.status !== "skipped") {
     lines.push("No documentation drift findings for this range.", "");
   } else {
     lines.push(...section("Confirmed", confirmed));
+    // Missing documentation sits between Confirmed and Needs review.
+    lines.push(
+      ...docsMissingSection(docsMissing, report.docsSync?.enforced === true),
+    );
     lines.push(...section("Needs review", needsReview));
     lines.push(...section("Unknown", unknown));
+  }
+
+  if (report.docsSync && (hasDocsMissing || report.docsSync.status === "skipped")) {
+    const skipLabel = "no-docs-needed";
+    lines.push(
+      `> No docs needed? Add the \`${skipLabel}\` label (re-runs on \`labeled\`) or a \`Docs-Not-Needed: <reason>\` commit trailer.`,
+      "",
+    );
   }
 
   if (report.ranking) {

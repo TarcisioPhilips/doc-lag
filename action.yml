@@ -68,6 +68,25 @@ inputs:
       When set, replaces built-in/config exclude patterns.
     required: false
     default: ""
+  docs-sync:
+    description: >
+      Force-enable (`true`) or disable (`false`) the docs-sync check. Empty
+      (default) uses config / DOC_LAG_DOCS_SYNC.
+    required: false
+    default: ""
+  docs-sync-enforce:
+    description: >
+      When `true`, docs.missing findings fail the step under fail-on confirmed
+      (implies docs-sync). Empty uses config / DOC_LAG_DOCS_SYNC_ENFORCE.
+    required: false
+    default: ""
+  docs-sync-skip-labels:
+    description: >
+      Comma- or newline-separated PR labels that skip the docs-sync check
+      (replaces docsSync.skipLabels). Empty keeps config defaults
+      (`no-docs-needed`).
+    required: false
+    default: ""
 
 outputs:
   findings-count:
@@ -79,6 +98,9 @@ outputs:
   needs-review-count:
     description: Number of needs-review findings
     value: ${{ steps.run.outputs.needs-review-count }}
+  docs-missing-count:
+    description: Number of docs.missing findings (0 when docs-sync is disabled or skipped)
+    value: ${{ steps.run.outputs.docs-missing-count }}
   report-path:
     description: Absolute path to the JSON report written by the action
     value: ${{ steps.run.outputs.report-path }}
@@ -126,6 +148,9 @@ runs:
         DOC_LAG_CONFIG: ${{ inputs.config }}
         DOC_LAG_DOCS_INCLUDE: ${{ inputs.docs-include }}
         DOC_LAG_DOCS_EXCLUDE: ${{ inputs.docs-exclude }}
+        DOC_LAG_DOCS_SYNC: ${{ inputs.docs-sync }}
+        DOC_LAG_DOCS_SYNC_ENFORCE: ${{ inputs.docs-sync-enforce }}
+        DOC_LAG_DOCS_SYNC_SKIP_LABELS: ${{ inputs.docs-sync-skip-labels }}
         GITHUB_TOKEN: ${{ github.token }}
         TYPESAFE_API_KEY: ${{ env.TYPESAFE_API_KEY }}
       run: node "${{ github.action_path }}/dist/action/main.js"

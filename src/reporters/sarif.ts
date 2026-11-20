@@ -1,4 +1,4 @@
-import type { Finding, FindingSeverity, ScanReport } from "../types.js";
+import type { Finding, ScanReport } from "../types.js";
 
 /** Minimal SARIF 2.1.0 document shape used for GitHub code scanning. */
 export interface SarifLog {
@@ -31,9 +31,12 @@ export interface SarifLog {
   }>;
 }
 
-function levelFor(severity: FindingSeverity, status: Finding["status"]): "error" | "warning" | "note" {
-  if (status === "confirmed") {
-    return severity === "warning" ? "warning" : "note";
+function levelFor(finding: Finding): "error" | "warning" | "note" {
+  if (finding.ruleId === "docs.missing") {
+    return finding.enforced === true ? "warning" : "note";
+  }
+  if (finding.status === "confirmed") {
+    return finding.severity === "warning" ? "warning" : "note";
   }
   return "note";
 }
@@ -46,9 +49,34 @@ function ruleShortDescription(ruleId: string): string {
       return "Local documentation link broken by the diff";
     case "env.stale":
       return "Documented env var removed from example files";
+    case "docs.missing":
+      return "Public surface changed without documentation";
     default:
       return ruleId;
   }
+}
+
+function locationFor(finding: Finding): { uri: string; startLine: number } {
+  if (finding.ruleId === "docs.missing" && finding.surface) {
+    if (finding.surface.trigger === "detector" && finding.surface.source) {
+      return {
+        uri: finding.surface.source.path.replaceAll("\\", "/"),
+        startLine: Math.max(1, finding.surface.source.line),
+      };
+    }
+    if (finding.surface.trigger === "rule") {
+      const first =
+        finding.surface.matchedFiles?.[0] ?? finding.change.path ?? finding.documentation.path;
+      return {
+        uri: first.replaceAll("\\", "/"),
+        startLine: 1,
+      };
+    }
+  }
+  return {
+    uri: finding.documentation.path.replaceAll("\\", "/"),
+    startLine: Math.max(1, finding.documentation.line),
+  };
 }
 
 /**
@@ -72,39 +100,43 @@ export function formatSarif(report: ScanReport): string {
             })),
           },
         },
-        results: report.findings.map((finding) => ({
-          ruleId: finding.ruleId,
-          level: levelFor(finding.severity, finding.status),
-          message: {
-            text: [
-              finding.message,
-              `Status: ${finding.status}`,
-              `Suggested action: ${finding.suggestion}`,
-            ].join("\n"),
-          },
-          locations: [
-            {
-              physicalLocation: {
-                artifactLocation: {
-                  uri: finding.documentation.path.replaceAll("\\", "/"),
-                },
-                region: { startLine: Math.max(1, finding.documentation.line) },
-              },
+        results: report.findings.map((finding) => {
+          const loc = locationFor(finding);
+          return {
+            ruleId: finding.ruleId,
+            level: levelFor(finding),
+            message: {
+              text: [
+                finding.message,
+                `Status: ${finding.status}`,
+                `Suggested action: ${finding.suggestion}`,
+              ].join("\n"),
             },
-          ],
-          properties: {
-            docLagFindingId: finding.id,
-            docLagStatus: finding.status,
-            docLagChangePath: finding.change.path,
-            docLagChangeKind: finding.change.kind,
-            ...(finding.ranking
-              ? {
-                  docLagJevScore: finding.ranking.score,
-                  docLagJevConfidence: finding.ranking.confidence,
-                }
-              : {}),
-          },
-        })),
+            locations: [
+              {
+                physicalLocation: {
+                  artifactLocation: {
+                    uri: loc.uri,
+                  },
+                  region: { startLine: loc.startLine },
+                },
+              },
+            ],
+            properties: {
+              docLagFindingId: finding.id,
+              docLagStatus: finding.status,
+              docLagChangePath: finding.change.path,
+              docLagChangeKind: finding.change.kind,
+              ...(finding.enforced === true ? { docLagEnforced: true } : {}),
+              ...(finding.ranking
+                ? {
+                    docLagJevScore: finding.ranking.score,
+                    docLagJevConfidence: finding.ranking.confidence,
+                  }
+                : {}),
+            },
+          };
+        }),
       },
     ],
   };
