@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TarcisioPhilips/doc-lag/blob/main/schema/doc-lag.config.schema.json",
+  "title": "doc-lag.config.json",
+  "description": "Configuration for doc-lag documentation discovery and optional docs-sync (docs.missing) checks.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema URL for editor autocomplete."
+    },
+    "docs": {
+      "type": "object",
+      "description": "Which Markdown/MDX paths count as documentation.",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Include globs (replaces built-in defaults when set).",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Exclude globs (replaces built-in defaults when set).",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "docsSync": {
+      "type": "object",
+      "description": "Optional missing-docs check. Presence of this object enables the check unless enabled is false.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Force enable/disable. When omitted, the docsSync object being present enables the check."
+        },
+        "enforce": {
+          "type": "boolean",
+          "description": "When true, docs.missing findings fail under --fail-on confirmed / Action fail-on confirmed.",
+          "default": false
+        },
+        "skipLabels": {
+          "type": "array",
+          "description": "PR labels that skip the whole docs-sync check (Action only).",
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["no-docs-needed"]
+        },
+        "skipTrailer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Commit trailer key that skips the check when present with a non-empty value.",
+          "default": "Docs-Not-Needed"
+        },
+        "ignore": {
+          "type": "array",
+          "description": "Extra code path globs excluded from docs-sync candidates.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ignoreSymbols": {
+          "type": "array",
+          "description": "Known-undocumented surfaces: \"<kind>:<name>\" or \"<kind>:<name>@<path-glob>\".",
+          "items": {
+            "type": "string",
+            "pattern": "^.+:.+$"
+          }
+        },
+        "detectors": {
+          "type": "object",
+          "description": "Per-detector enablement and optional path/docs overrides. Boolean shorthand or object.",
+          "additionalProperties": false,
+          "properties": {
+            "action.input": { "$ref": "#/$defs/detectorEntry" },
+            "action.output": { "$ref": "#/$defs/detectorEntry" },
+            "package.bin": { "$ref": "#/$defs/detectorEntry" },
+            "package.exports": { "$ref": "#/$defs/detectorEntry" },
+            "cli.flag": { "$ref": "#/$defs/detectorEntry" },
+            "cli.command": { "$ref": "#/$defs/detectorEntry" },
+            "mcp.tool": { "$ref": "#/$defs/detectorEntry" },
+            "env.added": { "$ref": "#/$defs/detectorEntry" }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "description": "Path pairing rules: code globs changed without matching docs updates.",
+          "items": { "$ref": "#/$defs/pairingRule" }
+        },
+        "packages": {
+          "type": "array",
+          "description": "Package root globs for perPackage rules (default packages/* and apps/*).",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "maxFindings": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Hard cap on docs.missing findings in one report.",
+          "default": 50
+        }
+      }
+    }
+  },
+  "$defs": {
+    "detectorEntry": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "paths": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1
+            },
+            "docs": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "pairingRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "code", "docs"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Unique rule id."
+        },
+        "code": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "docs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "changeKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["added", "modified", "renamed", "deleted"]
+          },
+          "uniqueItems": true
+        },
+        "perPackage": { "type": "boolean" },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

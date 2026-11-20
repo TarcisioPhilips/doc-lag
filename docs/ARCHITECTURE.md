@@ -14,8 +14,11 @@ git range (base..head)  [optional: ephemeral WORKING_TREE commit]
   → prepare doc content   (frontmatter; MDX import/export/JSX neutralized)
   → documentation extractors (references: scripts, links, env vars)
   → rules                 (compare facts vs references)
+  → optional docsSync     (when enabled: candidates → detectors → mention index
+                           → pairing rules → docs.missing findings + report.docsSync)
   → finding normalizer    (stable IDs, deterministic sort)
-  → optional Jev ranking  (--rank jev only: reorder needs-review/unknown; never change status)
+  → optional Jev ranking  (--rank jev only: reorder needs-review/unknown; never change status;
+                           docs.missing excluded from Jev candidates)
   → reporters + exit code (text / JSON / SARIF)
   → adapters: CLI · GitHub Action · MCP (stdio, read-only tools)
 ```
@@ -33,7 +36,9 @@ and stash are untouched.
 | `src/core/git.ts` | Resolve refs, list trees, read files at a revision, diff paths |
 | `src/core/docs.ts` | Decide which Markdown/MDX files are in scope (glob include/exclude) |
 | `src/core/docs-config.ts` | Defaults, `doc-lag.config.json` load, precedence |
+| `src/core/docs-sync-config.ts` | Docs-sync config types, defaults, validation, env overrides |
 | `src/core/doc-content.ts` | Frontmatter + MDX preparation (line-preserving) |
+| `src/docs-sync/` | Missing-docs engine: candidates, detectors, mention index, pairing rules |
 | `src/extractors/package-scripts.ts` | Extract script changes from package.json at base/head |
 | `src/extractors/markdown-scripts.ts` | Extract script invocations from Markdown |
 | `src/extractors/markdown-links.ts` | Extract local links and inline code paths from Markdown |
@@ -81,12 +86,45 @@ Current rules:
 - `env.stale` (RF-06): env keys removed or renamed in committed example files
   (`.env.example`, `.env.sample`, `.env.template`, …) that documentation still
   references. Never reads real `.env` files; only example files via git.
+- `docs.missing` (opt-in): new public surfaces or pairing-rule mismatches; see
+  **Docs-sync** below
+
+## Docs-sync (optional `docs.missing`)
+
+Off by default. When `docsSync` is enabled (config object, `--docs-sync`, Action
+`docs-sync`, MCP `docs_sync`, or `DOC_LAG_DOCS_SYNC`), `src/docs-sync/` runs
+after the classic rules:
+
+1. **Skip gate** — disabled / PR label in `skipLabels` / `Docs-Not-Needed`
+   trailer → `report.docsSync.status: "skipped"` (no findings).
+2. **Effective base** — `git merge-base` of base/head (fallback: base + warning).
+3. **Candidates** — changed non-doc files minus ignores, generated markers, and
+   default code excludes.
+4. **Detectors** — pure extractors per surface kind (`action.input`,
+   `action.output`, `package.bin`, `package.exports`, `cli.flag`, `cli.command`,
+   `mcp.tool`, opt-in `env.added`) at base and head; **new** = head − base by
+   `(kind, name)`.
+5. **Mention index** — tokenize in-scope docs once (via
+   `prepareDocumentationContent`) into inline code, fenced code, table cells,
+   headings, and prose; each new surface must appear in an allowed context.
+6. **Pairing rules** — configured `code`/`docs` globs; if code matched and no
+   meaningful docs change → one finding per rule (per package when
+   `perPackage`).
+7. Cap at `maxFindings`; attach `finding.surface` / `finding.enforced` and
+   `report.docsSync` metadata.
+
+Detectors live under `src/docs-sync/detectors/`; the engine does not call the
+network. Optional Jev ranking never scores `docs.missing` findings.
+
+Config autocomplete: [`schema/doc-lag.config.schema.json`](../schema/doc-lag.config.schema.json).
 
 ## Finding identity and output
 
-Finding IDs are content-derived (`ruleId:docPath:line:factName`), not
-sequential. Findings are sorted by documentation path, line, rule id, then
-id. The JSON report uses `schemaVersion: "1.0"`.
+Finding IDs are content-derived (`ruleId:docPath:line:factName` for classic
+rules; `docs.missing:<kind>:<name>@<path>` or `docs.missing:rule:<name>` for
+docs-sync), not sequential. Findings are sorted by documentation path, line,
+rule id, then id. The JSON report uses `schemaVersion: "1.0"` with optional
+additive `docsSync`, `surface`, and `enforced` fields.
 
 ## Trust boundary
 
@@ -152,9 +190,9 @@ Entry points: `doc-lag mcp` (stdio) and the `doc-lag-mcp` bin.
 
 | Tool | Role |
 | --- | --- |
-| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`; optional `include_working_tree`; optional `rank: "jev"`) |
-| `explain_finding` | Re-scan and return one finding by stable id with full evidence |
-| `list_rules` | List deterministic rules (`scripts.missing`, `links.broken`, `env.stale`) |
+| `scan_diff` | Scan `base..head` (defaults: merge-base with main → `HEAD`; optional `include_working_tree`; optional `rank: "jev"`; optional `docs_sync` / `docs_sync_enforce`) |
+| `explain_finding` | Re-scan and return one finding by stable id with full evidence (including `docs.missing`) |
+| `list_rules` | List deterministic rules (`scripts.missing`, `links.broken`, `env.stale`, `docs.missing`) plus docs-sync detectors |
 
 Trust / safety:
 

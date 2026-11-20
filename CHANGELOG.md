@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dogfood docs-sync on this repository: root `doc-lag.config.json` (`enforce: false`), CI `pull_request` types include `labeled`/`unlabeled`, and JSON Schema `schema/doc-lag.config.schema.json` for editor autocomplete
 - Docs-sync Jev exclusion + caps/perf: `docs.missing` findings are never sent to Jev ranking; oversized/candidate-cap truncation verified; Node 22 perf budget for 2,000 changed files
 - Docs-sync MCP wiring: `scan_diff` / `explain_finding` params `docs_sync` / `docs_sync_enforce`, **Action items for the agent** text for `docs.missing`, and `list_rules` includes `docs.missing` plus detectors
 - Docs-sync Action/reporter surfacing: sticky comment + job summary **Missing documentation** section, SARIF locations at declaration sites, Action inputs `docs-sync` / `docs-sync-enforce` / `docs-sync-skip-labels`, output `docs-missing-count`, and PR label skip from the event payload

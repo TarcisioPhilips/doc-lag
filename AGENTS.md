@@ -25,6 +25,8 @@ Docs in scope by default: root `README`/`AGENTS`/`CLAUDE`/`CONTRIBUTING`, `docs/
 
 Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config or `--docs-sync` / Action `docs-sync` / MCP `docs_sync`. Pairing rules plus detectors for Action inputs/outputs, package bins, CLI flags/commands, MCP tools, and (opt-in) env keys. Skip with commit trailer `Docs-Not-Needed: <reason>` or the `no-docs-needed` PR label (Action reads labels from the event; use `labeled`/`unlabeled` workflow types). Agents: prefer `scan_diff` with `docs_sync: true` before finishing and follow the Action items block.
 
+**This repo dogfoods docs-sync** via root `doc-lag.config.json` (`enforce: false`; CI Dogfood uses `fail-on: none`). Legitimate skips: `Docs-Not-Needed: <reason>` trailer or `no-docs-needed` PR label (owner-managed). JSON Schema: `schema/doc-lag.config.schema.json`.
+
 Safety: read-only by default; no secrets in git; do **not** enable `--rank jev` / `rank: jev` unless the user asks (requires `TYPESAFE_API_KEY`; sends diff/doc excerpts to a third party).
 
 ## If you are developing doc-lag itself
@@ -47,7 +49,7 @@ Tool-agnostic process for humans and coding agents (Cursor, Claude Code, Codex, 
 2. **Plan in small tasks** — Break the work into ordered, reviewable steps before writing code. Prefer shipping one step at a time. Keep full plans in `.plans/`; PR descriptions get only a short summary (never paste the whole spec).
 3. **Tests with behavior** — Add or update tests for every behavior change. Prefer test-first when practical. Use temp git fixtures for end-to-end scan cases and named edge-case fixtures (false positives, path layouts, config overrides).
 4. **One focused PR per step** — Branch off `main`, keep the diff scoped, use a conventional PR description with a **Test plan** checklist (summary + checklist only). Delete the branch after merge. Do not pile unrelated steps into one PR.
-5. **Keep docs in sync** — Update `README.md`, `AGENTS.md`, `docs/AGENT_SETUP.md`, `llms.txt`, and `CHANGELOG.md` (**Unreleased**) whenever user-facing behavior or setup changes. Dogfood: run doc-lag on its own PRs (CI Dogfood job / local `scan --base main`).
+5. **Keep docs in sync** — Update `README.md`, `AGENTS.md`, `docs/AGENT_SETUP.md`, `llms.txt`, and `CHANGELOG.md` (**Unreleased**) whenever user-facing behavior or setup changes. Dogfood: run doc-lag on its own PRs (CI Dogfood job with `docsSync` from `doc-lag.config.json` / local `scan --base main`).
 6. **Safety invariants** — Core scan stays deterministic, read-only, and offline (no network). Never commit secrets; gitleaks runs in CI. Optional `--rank jev` is opt-in only and never the default.
 7. **No release from feature PRs** — Do not bump `package.json` version or publish to npm. The maintainer cuts releases.
 
