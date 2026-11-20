@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Docs-sync opt-in `cli.argv` detector for hand-rolled `process.argv` / `sys.argv` long flags (off by default; skipped when commander/argparse/click is imported)
 - Dogfood docs-sync on this repository: root `doc-lag.config.json` (`enforce: false`), CI `pull_request` types include `labeled`/`unlabeled`, and JSON Schema `schema/doc-lag.config.schema.json` for editor autocomplete
 - Docs-sync Jev exclusion + caps/perf: `docs.missing` findings are never sent to Jev ranking; oversized/candidate-cap truncation verified; Node 22 perf budget for 2,000 changed files
 - Docs-sync MCP wiring: `scan_diff` / `explain_finding` params `docs_sync` / `docs_sync_enforce`, **Action items for the agent** text for `docs.missing`, and `list_rules` includes `docs.missing` plus detectors
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Docs-sync mention index: common English surface names (e.g. Action input `archive`) require structured documentation hits (inline code, table cell, or fenced YAML/`with:` key), not heading/prose alone
 - Default scan may report additional findings in monorepos and MDX doc sites (more paths in scope). Escape hatch: set `docs.include` to the legacy root + `docs/**/*.md` list. Findings for previously scanned Markdown paths remain compatible; report `schemaVersion` stays `1.0`.
 
 ## [0.3.0] — 2026-11-18

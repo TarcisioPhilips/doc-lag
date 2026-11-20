@@ -127,4 +127,59 @@ describe("buildMentionIndex", () => {
     });
     expect(counts.get("README.md")?.count).toBeGreaterThan(counts.get("docs/x.md")?.count ?? 0);
   });
+
+  it("common-word action.input: heading/prose Zip archives does not count", () => {
+    const index = buildMentionIndex({
+      docs: [
+        {
+          path: "README.md",
+          content: [
+            "# upload-artifact",
+            "",
+            "Contents are assembled into an immutable archive.",
+            "",
+            "### Zip archives",
+            "",
+            "When an Artifact is uploaded, all the files are assembled into an immutable Zip archive.",
+            "",
+          ].join("\n"),
+        },
+      ],
+    });
+    expect(index.hasMention({ kind: "action.input", name: "archive" })).toBe(false);
+  });
+
+  it("common-word action.input: table / inline code / YAML key do count", () => {
+    const table = buildMentionIndex({
+      docs: [
+        {
+          path: "README.md",
+          content: "| Input | Desc |\n| --- | --- |\n| archive | Upload as archive |\n",
+        },
+      ],
+    });
+    expect(table.hasMention({ kind: "action.input", name: "archive" })).toBe(true);
+
+    const inline = buildMentionIndex({
+      docs: [{ path: "README.md", content: "Set `archive` to true.\n" }],
+    });
+    expect(inline.hasMention({ kind: "action.input", name: "archive" })).toBe(true);
+
+    const yaml = buildMentionIndex({
+      docs: [
+        {
+          path: "README.md",
+          content: ["```yaml", "with:", "  archive: true", "```", ""].join("\n"),
+        },
+      ],
+    });
+    expect(yaml.hasMention({ kind: "action.input", name: "archive" })).toBe(true);
+  });
+
+  it("non-common action.input still matches headings", () => {
+    const index = buildMentionIndex({
+      docs: [{ path: "README.md", content: "## docs-sync\n\nEnable the check.\n" }],
+    });
+    expect(index.hasMention({ kind: "action.input", name: "docs-sync" })).toBe(true);
+  });
 });

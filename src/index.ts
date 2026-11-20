@@ -19,6 +19,10 @@ export {
   parseDocsSyncSection,
   resolveDocsSyncConfig,
 } from "./core/docs-sync-config.js";
+export {
+  COMMON_SURFACE_WORDS,
+  isCommonSurfaceWord,
+} from "./docs-sync/common-words.js";
 export type {
   ChangeKind,
   DetectorConfig,

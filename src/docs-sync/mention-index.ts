@@ -1,10 +1,18 @@
 import { prepareDocumentationContent } from "../core/doc-content.js";
 import type { SurfaceKind } from "../core/docs-sync-config.js";
+import { isCommonSurfaceWord } from "./common-words.js";
 import { matchesAnyGlob, normalizeRepoPath } from "./match.js";
 import {
   DETECTOR_ALLOWED_CONTEXTS,
   type MentionContext,
 } from "./detectors/types.js";
+
+/** Contexts that count for common English surface names (no heading/prose). */
+const COMMON_WORD_CONTEXTS: ReadonlySet<MentionContext> = new Set([
+  "inlineCode",
+  "tableCell",
+  "fencedCode",
+]);
 
 export interface MentionHit {
   docPath: string;
@@ -189,6 +197,15 @@ export function buildMentionIndex(options: {
     });
   }
 
+  function yamlKeyMatch(name: string, text: string): boolean {
+    return new RegExp(`(^|\\s)${escapeRegExp(name)}\\s*:`).test(text);
+  }
+
+  function wholeWordMatch(name: string, text: string): boolean {
+    // `-` counts as a word character so `zip-archives` does not match `archive`.
+    return new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`).test(text);
+  }
+
   function nameMatches(kind: SurfaceKind, name: string, text: string, context: MentionContext): boolean {
     if (kind === "package.exports") {
       // Match pkg/subpath or ./subpath as substring.
@@ -203,27 +220,32 @@ export function buildMentionIndex(options: {
       return false;
     }
 
+    const common = isCommonSurfaceWord(name);
+    if (common && !COMMON_WORD_CONTEXTS.has(context)) {
+      // Headings / bare prose ("Zip archives") must not satisfy common tokens.
+      return false;
+    }
+
     if (
       (kind === "action.input" || kind === "action.output") &&
       context === "fencedCode"
     ) {
-      const yamlKey = new RegExp(
-        `(^|\\s)${escapeRegExp(name)}\\s*:`,
-      );
-      if (yamlKey.test(text)) {
+      // `with:` / YAML key form — required for common words in fences; also
+      // accepted for non-common action surfaces (existing behavior).
+      if (yamlKeyMatch(name, text)) {
         return true;
+      }
+      // Common action names in a fence without a key form do not count.
+      if (common) {
+        return false;
       }
     }
 
-    if (kind === "cli.flag") {
-      // `--name` not preceded/followed by word or `-` chars.
-      const pattern = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`);
-      return pattern.test(text);
+    if (kind === "cli.flag" || kind === "cli.argv") {
+      return wholeWordMatch(name, text);
     }
 
-    // Whole word; `-` counts as a word character.
-    const pattern = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`);
-    return pattern.test(text);
+    return wholeWordMatch(name, text);
   }
 
   function anyNameMatches(
