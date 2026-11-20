@@ -298,6 +298,10 @@ export function evaluateDetectorFindings(options: {
       (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
   );
 
+  if (newSurfaces.length === 0) {
+    return { findings: [], newSurfaces: 0, warnings };
+  }
+
   const docPaths = listDocumentationFiles(options.headFiles, options.docsOptions);
   const docObjects = docPaths.map((p) => `${options.head}:${p}`);
   const docBlobs =

@@ -261,6 +261,12 @@ export function detectCliCommands(filePath: string, content: string): SurfaceDec
   if (!isJsTsPath(filePath) && !isPythonPath(filePath)) {
     return [];
   }
+  if (isJsTsPath(filePath) && !content.includes("commander")) {
+    return [];
+  }
+  if (isPythonPath(filePath) && !content.includes("argparse")) {
+    return [];
+  }
   const stripped = stripCommentsForPath(filePath, content);
   if (isPythonPath(filePath)) {
     return detectArgparseCommands(filePath, stripped);

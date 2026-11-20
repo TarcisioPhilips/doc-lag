@@ -41,7 +41,14 @@ export interface ApplyJevRankingOptions {
   warn?: (message: string) => void;
 }
 
-function isRankable(finding: Finding): boolean {
+/**
+ * Needs-review / unknown findings eligible for Jev scoring.
+ * `docs.missing` is always excluded (order unchanged; never sent to the API).
+ */
+export function isRankable(finding: Finding): boolean {
+  if (finding.ruleId === "docs.missing") {
+    return false;
+  }
   return finding.status === "needs-review" || finding.status === "unknown";
 }
 
@@ -116,6 +123,10 @@ export async function applyJevRanking(
   }
 
   const confirmed = report.findings.filter((f) => f.status === "confirmed").sort(compareFindings);
+  // Excluded from Jev; keep deterministic order and append after ranked candidates.
+  const docsMissing = report.findings
+    .filter((f) => f.ruleId === "docs.missing")
+    .sort(compareFindings);
   const candidates = report.findings.filter(isRankable).sort(compareFindings);
   const maxCandidates = options.maxCandidates ?? JEV_MAX_CANDIDATES;
   const toScore = candidates.slice(0, maxCandidates);
@@ -135,7 +146,7 @@ export async function applyJevRanking(
   if (toScore.length === 0) {
     return {
       ...report,
-      findings: orderFindings(confirmed, [], overflow),
+      findings: orderFindings(confirmed, [], [...overflow, ...docsMissing]),
       ranking: { ...rankingBase, applied: true },
     };
   }
@@ -189,7 +200,7 @@ export async function applyJevRanking(
     );
     return {
       ...report,
-      findings: orderFindings(confirmed, candidates, []),
+      findings: orderFindings(confirmed, candidates, docsMissing),
       ranking: {
         ...rankingBase,
         applied: false,
@@ -220,7 +231,7 @@ export async function applyJevRanking(
 
   return {
     ...report,
-    findings: orderFindings(confirmed, rankedFindings, overflow),
+    findings: orderFindings(confirmed, rankedFindings, [...overflow, ...docsMissing]),
     ranking: {
       ...rankingBase,
       applied: true,
