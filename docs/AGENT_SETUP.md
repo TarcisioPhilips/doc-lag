@@ -44,6 +44,7 @@ name: doc-lag
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -70,6 +71,7 @@ jobs:
 | Permissions | `contents: read`, `pull-requests: write` |
 | Checkout | `actions/checkout@v4` with **`fetch-depth: 0`** (full history for the base..head range) |
 | Action | `TarcisioPhilips/doc-lag@v0` (or pin a commit SHA) |
+| `pull_request` types | Include `labeled` / `unlabeled` so the `no-docs-needed` skip re-runs when labels change |
 
 Do **not** set `rank: jev` or `TYPESAFE_API_KEY` unless the user asked for Jev.
 
@@ -199,7 +201,7 @@ Or use MCP `scan_diff` with `include_working_tree: true` when the user has uncom
 ## CLI reference (consumer)
 
 ```bash
-npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--rank none|jev] [--cwd <path>] [--config <path>] [--docs-include <glob>] [--docs-exclude <glob>]
+npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-on confirmed|none] [--rank none|jev] [--cwd <path>] [--config <path>] [--docs-include <glob>] [--docs-exclude <glob>] [--docs-sync] [--docs-sync-enforce]
 ```
 
 | Exit | Meaning |
@@ -210,9 +212,9 @@ npx doc-lag scan --base <ref> [--head HEAD] [--format text|json|sarif] [--fail-o
 
 Optional ranking (`--rank jev`, Action `rank: jev`, MCP `rank: "jev"`) is available in **0.3.0+**. Only enable it when the user asks; it requires `TYPESAFE_API_KEY` and sends diff summaries + doc excerpts to `https://api.typesafe.ai`. Prefer `npx doc-lag` and Action `uses: TarcisioPhilips/doc-lag@v0`.
 
-Optional docs discovery: `doc-lag.config.json`, `--docs-include` / `--docs-exclude`, Action `docs-include` / `docs-exclude`, MCP `docs_include` / `docs_exclude`. See README **What counts as documentation**.
+Optional docs discovery: `doc-lag.config.json`, `--docs-include` / `--docs-exclude`, Action `docs-include` / `docs-exclude`, MCP `docs_include` / `docs_exclude`. JSON Schema: `schema/doc-lag.config.schema.json`. See README **What counts as documentation**.
 
-Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config, CLI `--docs-sync`, Action `docs-sync`, or MCP `docs_sync: true`.
+Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in config, CLI `--docs-sync`, Action `docs-sync`, or MCP `docs_sync: true`. Enforce with `--docs-sync-enforce` / `docs-sync-enforce` / `docs_sync_enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>` or PR label `no-docs-needed` (Action; use `labeled`/`unlabeled` workflow types).
 
 ---
 
@@ -221,6 +223,7 @@ Optional docs-sync (`docs.missing`): off by default; enable with `docsSync` in c
 - **`scripts.missing`** — documented package-manager script invocations removed/renamed in `package.json`
 - **`links.broken`** — local Markdown/image links (confirmed) or inline path heuristics (needs-review) broken by the diff
 - **`env.stale`** — env keys removed from committed example files still mentioned in docs
+- **`docs.missing`** (opt-in docs-sync) — new public surfaces or paired code changes without matching docs; see README **Missing docs check**
 
 Docs scanned by default: root `README`/`AGENTS`/`CLAUDE`/`CONTRIBUTING`, `docs/**`, common site/monorepo paths — `.md` and `.mdx`. Not yet: OpenAPI, Sphinx `.rst`.  
 Pre-existing drift (already wrong at `base`) is intentionally not reported.

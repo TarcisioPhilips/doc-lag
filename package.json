@@ -37,6 +37,7 @@
   },
   "files": [
     "dist",
+    "schema",
     "README.md",
     "CHANGELOG.md",
     "PROJECT_SPEC.md"

@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Include labeled/unlabeled so the no-docs-needed skip re-runs when labels change.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   build-and-test:
@@ -73,6 +75,7 @@ jobs:
         run: |
           echo "findings-count=${{ steps.doc-lag.outputs.findings-count }}"
           echo "confirmed-count=${{ steps.doc-lag.outputs.confirmed-count }}"
+          echo "docs-missing-count=${{ steps.doc-lag.outputs.docs-missing-count }}"
           echo "report-path=${{ steps.doc-lag.outputs.report-path }}"
           echo "sarif-path=${{ steps.doc-lag.outputs.sarif-path }}"
           test -n "${{ steps.doc-lag.outputs.report-path }}"

@@ -226,15 +226,17 @@ commands found in documentation.
 `DOC_LAG_CONFIG=<path>` is equivalent to `--config` when the flag is omitted.  
 `DOC_LAG_DOCS_SYNC=true|false` and `DOC_LAG_DOCS_SYNC_ENFORCE=true|false` match the docs-sync flags when omitted.
 
-Example `doc-lag.config.json`:
+Example `doc-lag.config.json` (docs discovery + optional docs-sync):
 
 ```json
 {
+  "$schema": "./schema/doc-lag.config.schema.json",
   "docs": {
     "include": ["README.md", "docs/**/*.{md,mdx}", "packages/*/README.md"],
     "exclude": ["**/node_modules/**", "**/CHANGELOG.md"]
   },
   "docsSync": {
+    "enforce": false,
     "rules": [
       { "name": "cli", "code": ["src/cli/**"], "docs": ["README.md", "docs/**"] }
     ]
@@ -242,15 +244,42 @@ Example `doc-lag.config.json`:
 }
 ```
 
-Docs-sync is **off by default**. When enabled, it can flag:
+Point `$schema` at [`schema/doc-lag.config.schema.json`](schema/doc-lag.config.schema.json) for editor autocomplete.
 
-- **Pairing rules** — configured code globs changed without a matching docs update
-- **Structured surfaces** — new GitHub Action inputs/outputs or `package.json` `bin` / (opt-in) `exports` not mentioned in docs
-- **CLI surfaces** — new commander / argparse / click flags and commands not mentioned in docs
-- **MCP surfaces** — new MCP tools (`registerTool` / `.tool` / FastMCP `@x.tool`) not mentioned in docs
-- **Env surfaces** (opt-in) — new keys in `.env.example`-family files not mentioned in docs (`detectors.env.added: true`)
+### Missing docs check (`docs.missing`)
 
-Skip with a `Docs-Not-Needed: <reason>` commit trailer (or the `no-docs-needed` PR label in the Action).
+Besides stale references, doc-lag can flag **missing** documentation: a PR that
+adds a public surface (CLI flag, Action input, MCP tool, …) or changes paired
+code paths without updating the docs that should describe them.
+
+**Off by default.** Enable with a `docsSync` object in config, CLI `--docs-sync`,
+Action `docs-sync: true`, MCP `docs_sync: true`, or `DOC_LAG_DOCS_SYNC=true`.
+
+When enabled it can report:
+
+| Kind | What triggers a finding |
+| --- | --- |
+| Pairing rules | Code matching `docsSync.rules[].code` changed without a meaningful update under `docs` |
+| `action.input` / `action.output` | New keys in `action.yml` not mentioned in docs |
+| `package.bin` (and opt-in `package.exports`) | New bin / exports subpaths not mentioned |
+| `cli.flag` / `cli.command` | New commander / argparse / click flags or commands not mentioned |
+| `mcp.tool` | New MCP tools not mentioned |
+| `env.added` (opt-in) | New keys in `.env.example`-family files not mentioned |
+
+Findings are `needs-review` with optional `surface` metadata. They do **not** fail
+`--fail-on confirmed` unless you set `docsSync.enforce: true` / `--docs-sync-enforce`
+/ Action `docs-sync-enforce: true`.
+
+**Skip legitimately:**
+
+- Commit trailer: `Docs-Not-Needed: <reason>` (skips the whole check for that range)
+- PR label: `no-docs-needed` (Action; labels from the event payload — subscribe to
+  `labeled` / `unlabeled` so adding/removing the label re-runs the job)
+- Config: `ignoreSymbols` / `ignore` for known-undocumented surfaces or paths
+
+See [What counts as documentation](#what-counts-as-documentation) for which files
+count as mentions. This repo dogfoods docs-sync via root `doc-lag.config.json`
+with `enforce: false` (advisory Dogfood CI job).
 
 ### Exit codes
 

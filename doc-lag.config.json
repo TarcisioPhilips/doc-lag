@@ -1,0 +1,41 @@
+{
+  "$schema": "./schema/doc-lag.config.schema.json",
+  "docsSync": {
+    "enforce": false,
+    "detectors": {
+      "action.input": { "enabled": true, "docs": ["README.md"] },
+      "action.output": { "enabled": true, "docs": ["README.md"] },
+      "package.bin": true,
+      "cli.flag": { "enabled": true, "docs": ["README.md"] },
+      "cli.command": true,
+      "mcp.tool": { "enabled": true, "docs": ["README.md", "docs/AGENT_SETUP.md"] }
+    },
+    "rules": [
+      {
+        "name": "rules-catalog",
+        "code": ["src/rules/**", "src/mcp/rules.ts"],
+        "docs": ["README.md", "PROJECT_SPEC.md", "llms.txt", "docs/ARCHITECTURE.md"]
+      },
+      {
+        "name": "config",
+        "code": ["src/core/docs-config.ts", "src/core/docs-sync-config.ts"],
+        "docs": ["README.md", "docs/**"]
+      },
+      {
+        "name": "mcp",
+        "code": ["src/mcp/server.ts", "src/mcp/handlers.ts"],
+        "docs": ["docs/AGENT_SETUP.md", "README.md", "llms.txt"]
+      },
+      {
+        "name": "action",
+        "code": ["src/action/inputs.ts", "action.yml"],
+        "docs": ["README.md"]
+      },
+      {
+        "name": "report-format",
+        "code": ["src/types.ts", "src/reporters/**"],
+        "docs": ["README.md", "PROJECT_SPEC.md"]
+      }
+    ]
+  }
+}
