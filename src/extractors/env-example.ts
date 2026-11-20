@@ -23,7 +23,8 @@ export function listEnvExampleFiles(files: string[]): string[] {
   return files.filter(isEnvExampleFile).sort();
 }
 
-function parseEnvKeys(content: string): Set<string> {
+/** Parse `KEY=value` assignments from an env-example file body (comments skipped). */
+export function parseEnvKeys(content: string): Set<string> {
   const keys = new Set<string>();
   const lines = content.split(/\r?\n/);
 
@@ -34,11 +35,40 @@ function parseEnvKeys(content: string): Set<string> {
     }
     const match = ENV_KEY_PATTERN.exec(trimmed);
     if (match) {
-      keys.add(match[1]);
+      keys.add(match[1]!);
     }
   }
 
   return keys;
+}
+
+/** First 1-based line of each env key in content (stable first-seen order). */
+export function parseEnvKeysWithLines(
+  content: string,
+): Array<{ key: string; line: number; literal: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ key: string; line: number; literal: string }> = [];
+  const lines = content.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const raw = lines[i]!;
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+    const match = ENV_KEY_PATTERN.exec(trimmed);
+    if (!match) {
+      continue;
+    }
+    const key = match[1]!;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push({ key, line: i + 1, literal: trimmed });
+  }
+
+  return out;
 }
 
 export function extractEnvSnapshot(
