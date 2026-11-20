@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Docs-sync opt-in `cli.argv` detector for hand-rolled `process.argv` / `sys.argv` long flags (off by default; skipped when commander/argparse/click is imported)
 - Docs-sync validation corpus: `validation/docs-sync/` cases (≥10 public repos + synthetic fixtures), replay script, committed results, and precision report; dogfood config ignores `validation/**` (fixture bait strings)
 - Docs-sync mention index: bold tokens (`**name**` / `__name__`) count as structured mentions for MCP tools and Action inputs/outputs (and related kinds)
 - Dogfood docs-sync on this repository: root `doc-lag.config.json` (`enforce: false`), CI `pull_request` types include `labeled`/`unlabeled`, and JSON Schema `schema/doc-lag.config.schema.json` for editor autocomplete
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Docs-sync mention index: common English surface names (e.g. Action input `archive`) require structured documentation hits (inline code, table cell, bold, or fenced YAML/`with:` key), not heading/prose alone
 - `git cat-file --batch` reads no longer abort huge diffs at a 32 MiB Node maxBuffer: one-shot large buffer first, then size-budgeted chunks; oversized objects are skipped with a warning instead of exit 2
 - Default scan may report additional findings in monorepos and MDX doc sites (more paths in scope). Escape hatch: set `docs.include` to the legacy root + `docs/**/*.md` list. Findings for previously scanned Markdown paths remain compatible; report `schemaVersion` stays `1.0`.
 

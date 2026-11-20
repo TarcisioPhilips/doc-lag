@@ -266,8 +266,14 @@ When enabled it can report:
 | `action.input` / `action.output` | New keys in `action.yml` not mentioned in docs |
 | `package.bin` (and opt-in `package.exports`) | New bin / exports subpaths not mentioned |
 | `cli.flag` / `cli.command` | New commander / argparse / click flags or commands not mentioned |
+| `cli.argv` (opt-in) | New hand-rolled `process.argv` / `sys.argv` long flags not mentioned |
 | `mcp.tool` | New MCP tools not mentioned |
 | `env.added` (opt-in) | New keys in `.env.example`-family files not mentioned |
+
+Common English surface names (e.g. Action input `archive`) must appear in a
+**structured** doc context — inline code, a markdown table cell, bold
+(`**archive**`), or a fenced YAML/`with:` key — not only in headings or bare
+prose.
 
 Findings are `needs-review` with optional `surface` metadata. They do **not** fail
 `--fail-on confirmed` unless you set `docsSync.enforce: true` / `--docs-sync-enforce`

@@ -32,6 +32,7 @@ export const KIND_LABELS: Record<SurfaceKind, string> = {
   "package.exports": "package export",
   "cli.flag": "CLI flag",
   "cli.command": "CLI command",
+  "cli.argv": "CLI argv flag",
   "mcp.tool": "MCP tool",
   "env.added": "environment variable",
 };
@@ -60,6 +61,7 @@ export const STRUCTURED_MENTION_CONTEXTS: readonly MentionContext[] = [
 export const DETECTOR_ALLOWED_CONTEXTS: Record<SurfaceKind, readonly MentionContext[]> = {
   "cli.flag": ["inlineCode", "fencedCode", "tableCell", "heading", "text", "bold"],
   "cli.command": ["inlineCode", "fencedCode", "tableCell", "heading", "bold"],
+  "cli.argv": ["inlineCode", "fencedCode", "tableCell", "heading", "text", "bold"],
   "action.input": ["inlineCode", "fencedCode", "tableCell", "heading", "bold"],
   "action.output": ["inlineCode", "fencedCode", "tableCell", "heading", "bold"],
   "package.bin": ["inlineCode", "fencedCode", "tableCell", "heading", "bold"],
