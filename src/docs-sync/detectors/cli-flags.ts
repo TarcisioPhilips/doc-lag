@@ -367,6 +367,17 @@ export function detectCliFlags(filePath: string, content: string): SurfaceDecl[]
   if (!isJsTsPath(filePath) && !isPythonPath(filePath)) {
     return [];
   }
+  // Cheap pre-filter before comment stripping (hot path on large PRs).
+  if (isJsTsPath(filePath) && !content.includes("commander")) {
+    return [];
+  }
+  if (
+    isPythonPath(filePath) &&
+    !content.includes("argparse") &&
+    !content.includes("click")
+  ) {
+    return [];
+  }
   const stripped = stripCommentsForPath(filePath, content);
   if (isPythonPath(filePath)) {
     return [

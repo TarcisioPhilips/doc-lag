@@ -255,12 +255,17 @@ function detectPythonMcpTools(filePath: string, stripped: string): SurfaceDecl[]
  * Skips tools whose names start with `_`.
  */
 export function detectMcpTools(filePath: string, content: string): SurfaceDecl[] {
-  const stripped = stripCommentsForPath(filePath, content);
   if (isJsTsPath(filePath)) {
-    return detectTsJsMcpTools(filePath, stripped);
+    if (!content.includes("@modelcontextprotocol/sdk")) {
+      return [];
+    }
+    return detectTsJsMcpTools(filePath, stripCommentsForPath(filePath, content));
   }
   if (isPythonPath(filePath)) {
-    return detectPythonMcpTools(filePath, stripped);
+    if (!content.includes("mcp") && !content.includes("fastmcp")) {
+      return [];
+    }
+    return detectPythonMcpTools(filePath, stripCommentsForPath(filePath, content));
   }
   return [];
 }

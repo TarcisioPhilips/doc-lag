@@ -289,7 +289,8 @@ By default doc-lag stays offline. When a PR produces many **needs-review**
 findings, optional **[Jev](https://docs.typesafe.ai)** ranking (TypeSafe AI’s
 non-generative System One model) puts the ones that matter first and sinks likely
 false alarms. Ranking **never** changes a finding’s `status` and never upgrades
-anything to `confirmed` — order and evidence only.
+anything to `confirmed` — order and evidence only. `docs.missing` findings are
+excluded from Jev candidates (deterministic order; never sent to the API).
 
 **When to enable:** large PRs with a noisy needs-review list (especially
 `env.stale` table cells or heuristic path mentions). Skip it for small PRs or when

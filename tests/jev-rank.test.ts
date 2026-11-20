@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { scan } from "../src/core/scan.js";
 import { scanWithRanking } from "../src/core/scan-with-ranking.js";
@@ -13,7 +15,7 @@ import {
   estimateCostUsd,
   scoreWithJev,
 } from "../src/ranking/jev-client.js";
-import { applyJevRanking } from "../src/ranking/jev-rank.js";
+import { applyJevRanking, isRankable } from "../src/ranking/jev-rank.js";
 import { redactSecrets, safeErrorMessage } from "../src/ranking/redact.js";
 import { formatJson } from "../src/reporters/json.js";
 import { formatText } from "../src/reporters/text.js";
@@ -374,5 +376,110 @@ describe("report schema without ranking", () => {
     const parsed = JSON.parse(formatJson(report)) as Record<string, unknown>;
     expect(parsed.schemaVersion).toBe("1.0");
     expect("ranking" in parsed).toBe(false);
+  });
+});
+
+describe("FR-46: Jev excludes docs.missing", () => {
+  it("isRankable is false for docs.missing", () => {
+    expect(
+      isRankable({
+        id: "docs.missing:rule:cli",
+        ruleId: "docs.missing",
+        status: "needs-review",
+        severity: "warning",
+        message: "x",
+        documentation: { path: "README.md", line: 1 },
+        evidence: [],
+        change: { path: "src/cli.ts", kind: "modified" },
+        suggestion: "y",
+      }),
+    ).toBe(false);
+    expect(
+      isRankable({
+        id: "links.broken:docs/a.md:1:x",
+        ruleId: "links.broken",
+        status: "needs-review",
+        severity: "info",
+        message: "x",
+        documentation: { path: "docs/a.md", line: 1 },
+        evidence: [],
+        change: { path: "src/x.ts", kind: "deleted" },
+        suggestion: "y",
+      }),
+    ).toBe(true);
+  });
+
+  it("does not send docs.missing to Jev and keeps them unranked", async () => {
+    const fixture = track(
+      createFixtureRepo({
+        baseFiles: {
+          "package.json": packageJson({ build: "tsc" }),
+          "README.md": "# App\n",
+          "src/old.ts": "export const x = 1;\n",
+          "src/cli/main.ts": "console.log('hi');\n",
+          "docs/guide.md": "See `src/old.ts`.\n",
+        },
+        headFiles: {
+          "src/old.ts": null,
+          "src/cli/main.ts": "console.log('hi');\nconsole.log('bye');\n",
+        },
+      }),
+    );
+    writeFileSync(
+      path.join(fixture.repo, "doc-lag.config.json"),
+      JSON.stringify({
+        docsSync: {
+          rules: [{ name: "cli", code: ["src/cli/**"], docs: ["README.md"] }],
+        },
+      }),
+    );
+
+    const report = scan({ cwd: fixture.repo, base: fixture.base, head: fixture.head });
+    const docsMissing = report.findings.filter((f) => f.ruleId === "docs.missing");
+    const otherNeedsReview = report.findings.filter(
+      (f) => f.status === "needs-review" && f.ruleId !== "docs.missing",
+    );
+    expect(docsMissing.length).toBeGreaterThanOrEqual(1);
+    expect(otherNeedsReview.length).toBeGreaterThanOrEqual(1);
+
+    const scoredIds: string[] = [];
+    const fetchImpl = mockJevFetch(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { state: { finding_id: string } };
+      scoredIds.push(body.state.finding_id);
+      expect(body.state.finding_id.startsWith("docs.missing:")).toBe(false);
+      return new Response(
+        JSON.stringify({
+          model: JEV_MODEL,
+          answers: {
+            relevance: { type: "score", score: 1.5, confidence: 0.8 },
+          },
+          usage: { input_tokens: 40, output_tokens: 2 },
+        }),
+        { status: 200 },
+      );
+    });
+
+    const ranked = await applyJevRanking(report, {
+      cwd: fixture.repo,
+      headSha: fixture.head,
+      baseLabel: fixture.base,
+      headLabel: fixture.head,
+      apiKey: "test-key",
+      fetchImpl,
+      warn: () => undefined,
+    });
+
+    expect(scoredIds.length).toBe(otherNeedsReview.length);
+    expect(scoredIds.every((id) => !id.startsWith("docs.missing:"))).toBe(true);
+    expect(ranked.ranking?.candidatesScored).toBe(otherNeedsReview.length);
+
+    const rankedDocsMissing = ranked.findings.filter((f) => f.ruleId === "docs.missing");
+    expect(rankedDocsMissing.map((f) => f.id).sort()).toEqual(
+      docsMissing.map((f) => f.id).sort(),
+    );
+    for (const finding of rankedDocsMissing) {
+      expect(finding.ranking).toBeUndefined();
+      expect(finding.evidence.some((e) => e.path === "jev")).toBe(false);
+    }
   });
 });

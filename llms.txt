@@ -24,7 +24,7 @@ Default scan: root README/AGENTS/CLAUDE/CONTRIBUTING, `docs/**`, `website/docs/*
 
 ## Docs-sync (optional)
 
-Off by default. Enable with `docsSync` in config, `--docs-sync`, Action `docs-sync`, MCP `docs_sync: true`, or `DOC_LAG_DOCS_SYNC=true`. Emits `docs.missing` for pairing rules and new Action inputs/outputs, package bins (exports opt-in), CLI flags/commands (commander/argparse/click), MCP tools, and (opt-in) env keys (`env.added`). Enforce with `--docs-sync-enforce` / Action `docs-sync-enforce` / MCP `docs_sync_enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>` or Action label `no-docs-needed` (event payload; subscribe to `labeled`/`unlabeled`). Sticky comment / job summary show a Missing documentation section; Action output `docs-missing-count`; MCP `scan_diff` text adds Action items for the agent when `docs.missing` exists.
+Off by default. Enable with `docsSync` in config, `--docs-sync`, Action `docs-sync`, MCP `docs_sync: true`, or `DOC_LAG_DOCS_SYNC=true`. Emits `docs.missing` for pairing rules and new Action inputs/outputs, package bins (exports opt-in), CLI flags/commands (commander/argparse/click), MCP tools, and (opt-in) env keys (`env.added`). Enforce with `--docs-sync-enforce` / Action `docs-sync-enforce` / MCP `docs_sync_enforce`. Skip with commit trailer `Docs-Not-Needed: <reason>` or Action label `no-docs-needed` (event payload; subscribe to `labeled`/`unlabeled`). Sticky comment / job summary show a Missing documentation section; Action output `docs-missing-count`; MCP `scan_diff` text adds Action items for the agent when `docs.missing` exists. Optional `--rank jev` never scores `docs.missing`.
 
 ## Docs
 
