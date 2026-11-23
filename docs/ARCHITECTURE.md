@@ -105,8 +105,9 @@ after the classic rules:
    `mcp.tool`, opt-in `env.added`) at base and head; **new** = head − base by
    `(kind, name)`.
 5. **Mention index** — tokenize in-scope docs once (via
-   `prepareDocumentationContent`) into inline code, fenced code, table cells,
-   headings, and prose; each new surface must appear in an allowed context.
+   `prepareDocumentationContent`) into inline code, bold (`**name**` /
+   `__name__`), fenced code, table cells, headings, and prose; each new surface
+   must appear in an allowed context.
 6. **Pairing rules** — configured `code`/`docs` globs; if code matched and no
    meaningful docs change → one finding per rule (per package when
    `perPackage`).
