@@ -255,6 +255,9 @@ code paths without updating the docs that should describe them.
 **Off by default.** Enable with a `docsSync` object in config, CLI `--docs-sync`,
 Action `docs-sync: true`, MCP `docs_sync: true`, or `DOC_LAG_DOCS_SYNC=true`.
 
+Mentions in docs include inline code, markdown tables, fenced YAML/`with:` keys,
+and bold list items such as `- **tool_name**` (MCP tools and Action inputs/outputs).
+
 When enabled it can report:
 
 | Kind | What triggers a finding |

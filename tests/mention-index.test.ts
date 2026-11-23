@@ -127,4 +127,34 @@ describe("buildMentionIndex", () => {
     });
     expect(counts.get("README.md")?.count).toBeGreaterThan(counts.get("docs/x.md")?.count ?? 0);
   });
+
+  it("bold list items count as structured mentions for mcp.tool and action.input", () => {
+    const index = buildMentionIndex({
+      docs: [
+        {
+          path: "README.md",
+          content: [
+            "# Tools",
+            "",
+            "- **create_entities**",
+            "- **summary**: short description",
+            "* **delete_file** — remove a file",
+            "",
+            "Plain create_entities in prose does not count for mcp.tool.",
+            "",
+          ].join("\n"),
+        },
+      ],
+    });
+    expect(index.hasMention({ kind: "mcp.tool", name: "create_entities" })).toBe(true);
+    expect(index.hasMention({ kind: "mcp.tool", name: "summary" })).toBe(true);
+    expect(index.hasMention({ kind: "mcp.tool", name: "delete_file" })).toBe(true);
+    expect(index.hasMention({ kind: "action.input", name: "create_entities" })).toBe(true);
+    expect(index.hasMention({ kind: "action.output", name: "summary" })).toBe(true);
+    // Underscore bold form
+    const us = buildMentionIndex({
+      docs: [{ path: "README.md", content: "- __read_file__\n" }],
+    });
+    expect(us.hasMention({ kind: "mcp.tool", name: "read_file" })).toBe(true);
+  });
 });
